@@ -58,6 +58,11 @@ export function createSupabaseDb(rawUrl, serviceRoleKey) {
       async findById(id) {
         return must(await client.from('users').select('id, email, name, role, created_at').eq('id', id).maybeSingle());
       },
+      async count() {
+        const { count, error } = await client.from('users').select('*', { count: 'exact', head: true });
+        if (error) throw new Error(error.message);
+        return count ?? 0;
+      },
     },
 
     places: {
@@ -164,6 +169,82 @@ export function createSupabaseDb(rawUrl, serviceRoleKey) {
       },
     },
 
+    reviews: {
+      async listByPlace(placeId, limit = 50) {
+        return must(await client.from('reviews')
+          .select('*, users(name)')
+          .eq('place_id', placeId)
+          .order('created_at', { ascending: false }).limit(limit));
+      },
+      async create({ userId, placeId, rating, body }) {
+        return must(await client.from('reviews')
+          .upsert({ user_id: userId, place_id: placeId, rating, body }, { onConflict: 'user_id,place_id' })
+          .select('*').single());
+      },
+      async remove(id) {
+        const data = must(await client.from('reviews').delete().eq('id', id).select('id'));
+        return data.length > 0;
+      },
+      async avgRating(placeId) {
+        const rows = must(await client.from('reviews').select('rating').eq('place_id', placeId));
+        if (!rows.length) return { avg: null, count: 0 };
+        const avg = rows.reduce((s, r) => s + r.rating, 0) / rows.length;
+        return { avg: Math.round(avg * 10) / 10, count: rows.length };
+      },
+    },
+
+    credits: {
+      async balance(userId) {
+        const rows = must(await client.from('credits_ledger').select('amount').eq('user_id', userId));
+        return rows.reduce((s, r) => s + r.amount, 0);
+      },
+      async add({ userId, amount, reason, refId }) {
+        must(await client.from('credits_ledger').insert({ user_id: userId, amount, reason, ref_id: refId ?? null }));
+        return this.balance(userId);
+      },
+      async history(userId, limit = 50) {
+        return must(await client.from('credits_ledger').select('*').eq('user_id', userId)
+          .order('created_at', { ascending: false }).limit(limit));
+      },
+    },
+
+    reportConfirmations: {
+      async create({ reportId, userId, vote, lat, lng }) {
+        try {
+          must(await client.from('report_confirmations').insert({ report_id: reportId, user_id: userId, vote, lat, lng }));
+        } catch { return null; }
+        const rows = must(await client.from('report_confirmations').select('vote').eq('report_id', reportId));
+        const yes = rows.filter((r) => r.vote === 'confirm').length;
+        const no = rows.filter((r) => r.vote === 'gone').length;
+        return { total: rows.length, yes, no };
+      },
+      async counts(reportId) {
+        const rows = must(await client.from('report_confirmations').select('vote').eq('report_id', reportId));
+        const yes = rows.filter((r) => r.vote === 'confirm').length;
+        const no = rows.filter((r) => r.vote === 'gone').length;
+        return { total: rows.length, yes, no };
+      },
+      async userVote(reportId, userId) {
+        return must(await client.from('report_confirmations').select('vote').eq('report_id', reportId).eq('user_id', userId).maybeSingle());
+      },
+    },
+
+    savedPlaces: {
+      async listByUser(userId) {
+        return must(await client.from('saved_places').select('*').eq('user_id', userId)
+          .order('place_type').order('label'));
+      },
+      async upsert({ userId, label, name, lat, lng, placeType = 'custom', ghanaPostGps }) {
+        return must(await client.from('saved_places')
+          .upsert({ user_id: userId, label, name, lat, lng, place_type: placeType, ghana_post_gps: ghanaPostGps ?? null }, { onConflict: 'user_id,label' })
+          .select('*').single());
+      },
+      async remove(id, userId) {
+        const data = must(await client.from('saved_places').delete().eq('id', id).eq('user_id', userId).select('id'));
+        return data.length > 0;
+      },
+    },
+
     // Tile blobs don't belong in Postgres — the tiles route falls back to an
     // in-memory LRU per serverless instance when this is null.
     tiles: null,
@@ -175,9 +256,8 @@ export function createSupabaseDb(rawUrl, serviceRoleKey) {
         }));
         must(await client.from('places').insert(rows));
       }
-      if ((await this.trotro.count()) === 0) {
-        must(await client.from('trotro_routes').insert(TROTRO_ROUTES));
-      }
+      // Always upsert trotro routes so new routes are added without wiping existing.
+      must(await client.from('trotro_routes').upsert(TROTRO_ROUTES, { onConflict: 'slug', ignoreDuplicates: true }));
     },
   };
 }

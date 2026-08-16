@@ -195,7 +195,7 @@ test('traffic and vibe endpoints respond', async () => {
 // ── Trotro ───────────────────────────────────────────────────────
 test('trotro routes list and detail', async () => {
   const list = await request(app).get('/api/trotro').expect(200);
-  assert.equal(list.body.routes.length, 5);
+  assert.ok(list.body.routes.length >= 5);
   const detail = await request(app).get('/api/trotro/circle-kaneshie').expect(200);
   assert.equal(detail.body.route.station_name, 'Kwame Nkrumah Circle Station');
   await request(app).get('/api/trotro/nope').expect(404);

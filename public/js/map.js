@@ -8,9 +8,10 @@ let baseLayer = null;
 let satLayer = null;
 let routeLine = null;
 let userMarker = null;
+let accuracyCircle = null;
+let clusterGroup = null;
 const placeMarkers = [];
 
-// Tiles come through our own backend (cached server-side) — see server/routes/tiles.js
 const OSM_URL = '/tiles/osm/{z}/{x}/{y}.png';
 const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const SAT_URL = '/tiles/sat/{z}/{x}/{y}.png';
@@ -22,6 +23,25 @@ export function initMap() {
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   baseLayer = L.tileLayer(OSM_URL, { attribution: OSM_ATTR, maxZoom: 19 }).addTo(map);
   satLayer = L.tileLayer(SAT_URL, { attribution: SAT_ATTR, maxZoom: 19 });
+
+  if (typeof L.markerClusterGroup === 'function') {
+    clusterGroup = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 60,
+      spiderfyOnMaxZoom: true,
+      disableClusteringAtZoom: 17,
+      iconCreateFunction(cluster) {
+        const n = cluster.getChildCount();
+        const sz = n < 10 ? 'small' : n < 100 ? 'medium' : 'large';
+        return L.divIcon({
+          html: `<div><span>${n}</span></div>`,
+          className: `marker-cluster marker-cluster-${sz}`,
+          iconSize: [40, 40],
+        });
+      },
+    });
+    map.addLayer(clusterGroup);
+  }
 
   map.on('mousemove', (e) => {
     const la = e.latlng.lat, lo = e.latlng.lng;
@@ -59,7 +79,11 @@ export function pinIcon(emoji, color = '#FCD116') {
 }
 
 export function clearPlaceMarkers() {
-  placeMarkers.forEach((m) => m.remove());
+  if (clusterGroup) {
+    clusterGroup.clearLayers();
+  } else {
+    placeMarkers.forEach((m) => m.remove());
+  }
   placeMarkers.length = 0;
 }
 
@@ -67,10 +91,14 @@ export function addPlaceMarkers(places, popupHtml) {
   clearPlaceMarkers();
   places.forEach((p) => {
     const marker = L.marker([p.lat, p.lng], { icon: pinIcon(p.icon || '📍') })
-      .addTo(map)
-      .bindPopup(popupHtml(p), { closeButton: true });
+      .bindPopup(popupHtml(p), { closeButton: true, maxWidth: 260 });
     placeMarkers.push(marker);
   });
+  if (clusterGroup) {
+    clusterGroup.addLayers(placeMarkers);
+  } else {
+    placeMarkers.forEach((m) => m.addTo(map));
+  }
   return placeMarkers;
 }
 
@@ -99,7 +127,7 @@ export function clearRoute() {
   }
 }
 
-export function setUserMarker(lat, lng) {
+export function setUserMarker(lat, lng, accuracyM = 0) {
   if (!userMarker) {
     userMarker = L.marker([lat, lng], {
       icon: L.divIcon({ className: 'am-pin', html: '<div class="user-dot"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }),
@@ -109,11 +137,29 @@ export function setUserMarker(lat, lng) {
   } else {
     userMarker.setLatLng([lat, lng]);
   }
+
+  if (accuracyM > 0 && accuracyM < 5000) {
+    if (!accuracyCircle) {
+      accuracyCircle = L.circle([lat, lng], {
+        radius: accuracyM,
+        stroke: true,
+        weight: 1.5,
+        color: 'rgba(252,209,22,.6)',
+        fillColor: 'rgba(252,209,22,.08)',
+        fillOpacity: 1,
+        interactive: false,
+      }).addTo(map);
+    } else {
+      accuracyCircle.setLatLng([lat, lng]).setRadius(accuracyM);
+    }
+  }
 }
 
 export function removeUserMarker() {
   userMarker?.remove();
   userMarker = null;
+  accuracyCircle?.remove();
+  accuracyCircle = null;
 }
 
 export function flyTo(lat, lng, zoom = 16) {
@@ -126,12 +172,13 @@ export function openPopupAt(lat, lng, html) {
 
 export function placePopupHtml(p) {
   const name = esc(p.name);
+  const stars = p.rating ? '★'.repeat(Math.round(p.rating)) + '☆'.repeat(5 - Math.round(p.rating)) : '';
   return `<div class="pp-card">
     <div class="pp-hero">${p.icon || '📍'}</div>
     <div class="pp-body">
       <div class="pp-name">${name}</div>
       <div class="pp-meta">
-        ${p.rating ? `<span class="pp-rating">${p.rating}★</span>` : ''}
+        ${p.rating ? `<span class="pp-stars">${stars}</span><span class="pp-review-count">${p.rating}</span>` : ''}
         ${p.area ? `<span style="font-size:10px;color:#9C9484">${esc(p.area)}${p.city && p.city !== 'Accra' ? ', ' + esc(p.city) : ''}</span>` : ''}
       </div>
       ${p.description ? `<div class="pp-desc">${esc(p.description)}</div>` : ''}

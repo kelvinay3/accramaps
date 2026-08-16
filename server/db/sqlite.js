@@ -85,6 +85,54 @@ CREATE TABLE IF NOT EXISTS tile_cache (
   body       BLOB NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  place_id   INTEGER NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+  rating     INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  body       TEXT,
+  helpful    INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, place_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reviews_place ON reviews(place_id);
+
+CREATE TABLE IF NOT EXISTS credits_ledger (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount     INTEGER NOT NULL,
+  reason     TEXT NOT NULL,
+  ref_id     INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_credits_user ON credits_ledger(user_id);
+
+CREATE TABLE IF NOT EXISTS report_confirmations (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  report_id  INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vote       TEXT NOT NULL CHECK (vote IN ('confirm','gone')),
+  lat        REAL NOT NULL,
+  lng        REAL NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (report_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_rc_report ON report_confirmations(report_id);
+
+CREATE TABLE IF NOT EXISTS saved_places (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label          TEXT NOT NULL,
+  name           TEXT NOT NULL,
+  lat            REAL NOT NULL,
+  lng            REAL NOT NULL,
+  place_type     TEXT NOT NULL DEFAULT 'custom',
+  ghana_post_gps TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, label)
+);
+CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_places(user_id);
 `;
 
 const nowIso = () => new Date().toISOString();
@@ -113,6 +161,9 @@ export async function createSqliteDb(dbPath) {
       },
       async findById(id) {
         return raw.prepare('SELECT id, email, name, role, created_at FROM users WHERE id = ?').get(id) ?? null;
+      },
+      async count() {
+        return raw.prepare('SELECT COUNT(*) AS n FROM users').get().n;
       },
     },
 
@@ -229,6 +280,75 @@ export async function createSqliteDb(dbPath) {
       },
     },
 
+    reviews: {
+      async listByPlace(placeId, limit = 50) {
+        return raw.prepare(
+          `SELECT r.*, u.name as user_name FROM reviews r
+           JOIN users u ON u.id = r.user_id
+           WHERE r.place_id = ? ORDER BY r.created_at DESC LIMIT ?`
+        ).all(placeId, limit);
+      },
+      async create({ userId, placeId, rating, body }) {
+        const info = raw.prepare(
+          'INSERT OR REPLACE INTO reviews (user_id, place_id, rating, body) VALUES (?, ?, ?, ?)'
+        ).run(userId, placeId, rating, body);
+        return raw.prepare('SELECT * FROM reviews WHERE id = ?').get(info.lastInsertRowid);
+      },
+      async remove(id) {
+        return raw.prepare('DELETE FROM reviews WHERE id = ?').run(id).changes > 0;
+      },
+      async avgRating(placeId) {
+        const row = raw.prepare('SELECT AVG(rating) AS avg, COUNT(*) AS cnt FROM reviews WHERE place_id = ?').get(placeId);
+        return { avg: row.avg ? Math.round(row.avg * 10) / 10 : null, count: row.cnt };
+      },
+    },
+
+    credits: {
+      async balance(userId) {
+        const row = raw.prepare('SELECT COALESCE(SUM(amount),0) AS bal FROM credits_ledger WHERE user_id = ?').get(userId);
+        return row.bal;
+      },
+      async add({ userId, amount, reason, refId }) {
+        raw.prepare('INSERT INTO credits_ledger (user_id, amount, reason, ref_id) VALUES (?, ?, ?, ?)').run(userId, amount, reason, refId ?? null);
+        return this.balance(userId);
+      },
+      async history(userId, limit = 50) {
+        return raw.prepare('SELECT * FROM credits_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT ?').all(userId, limit);
+      },
+    },
+
+    reportConfirmations: {
+      async create({ reportId, userId, vote, lat, lng }) {
+        try {
+          raw.prepare('INSERT INTO report_confirmations (report_id, user_id, vote, lat, lng) VALUES (?, ?, ?, ?, ?)').run(reportId, userId, vote, lat, lng);
+        } catch { return null; }
+        return raw.prepare('SELECT COUNT(*) AS confirms, SUM(vote="confirm") AS yes, SUM(vote="gone") AS no FROM report_confirmations WHERE report_id = ?').get(reportId);
+      },
+      async counts(reportId) {
+        return raw.prepare('SELECT COUNT(*) AS total, SUM(vote="confirm") AS yes, SUM(vote="gone") AS no FROM report_confirmations WHERE report_id = ?').get(reportId);
+      },
+      async userVote(reportId, userId) {
+        return raw.prepare('SELECT vote FROM report_confirmations WHERE report_id = ? AND user_id = ?').get(reportId, userId) ?? null;
+      },
+    },
+
+    savedPlaces: {
+      async listByUser(userId) {
+        return raw.prepare('SELECT * FROM saved_places WHERE user_id = ? ORDER BY place_type, label').all(userId);
+      },
+      async upsert({ userId, label, name, lat, lng, placeType = 'custom', ghanaPostGps }) {
+        raw.prepare(
+          `INSERT INTO saved_places (user_id, label, name, lat, lng, place_type, ghana_post_gps)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(user_id, label) DO UPDATE SET name=excluded.name, lat=excluded.lat, lng=excluded.lng, place_type=excluded.place_type, ghana_post_gps=excluded.ghana_post_gps`
+        ).run(userId, label, name, lat, lng, placeType, ghanaPostGps ?? null);
+        return raw.prepare('SELECT * FROM saved_places WHERE user_id = ? AND label = ?').get(userId, label);
+      },
+      async remove(id, userId) {
+        return raw.prepare('DELETE FROM saved_places WHERE id = ? AND user_id = ?').run(id, userId).changes > 0;
+      },
+    },
+
     async seedIfEmpty({ PLACES, TROTRO_ROUTES }) {
       if ((await this.places.count()) === 0) {
         const ins = raw.prepare(`
@@ -242,14 +362,13 @@ export async function createSqliteDb(dbPath) {
         });
         tx(PLACES);
       }
-      if ((await this.trotro.count()) === 0) {
-        const ins = raw.prepare(`
-          INSERT INTO trotro_routes (slug, title, route, fare, duration, frequency, board_at, callout, traffic_note, station_name, station_lat, station_lng)
-          VALUES (@slug, @title, @route, @fare, @duration, @frequency, @board_at, @callout, @traffic_note, @station_name, @station_lat, @station_lng)
-        `);
-        const tx = raw.transaction((rows) => { for (const r of rows) ins.run(r); });
-        tx(TROTRO_ROUTES);
-      }
+      // Always upsert trotro routes so new routes are added on every boot.
+      const ins = raw.prepare(`
+        INSERT OR IGNORE INTO trotro_routes (slug, title, route, fare, duration, frequency, board_at, callout, traffic_note, station_name, station_lat, station_lng)
+        VALUES (@slug, @title, @route, @fare, @duration, @frequency, @board_at, @callout, @traffic_note, @station_name, @station_lat, @station_lng)
+      `);
+      const tx = raw.transaction((rows) => { for (const r of rows) ins.run(r); });
+      tx(TROTRO_ROUTES);
     },
   };
 }

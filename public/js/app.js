@@ -1,5 +1,7 @@
 import { store } from './state.js';
-import { initMap, resetView, toggleSat, map } from './map.js';
+import { api } from './api.js';
+import { esc } from './util.js';
+import { initMap, resetView, toggleSat, map, flyTo } from './map.js';
 import { setupAllAC, clearGS, clearDF, swapInputs } from './search.js';
 import { setMode, useMyLocation, startNav, stopNav, toggleVoice, navToCoords } from './directions.js';
 import { toggleGPS } from './gps.js';
@@ -21,20 +23,46 @@ window.AM = {
   showTrotroDetail, showTrotroModal, navToTrotroStation,
   showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace,
   closeModal, showShareModal: () => openModal('shareModal'), shareWA, copyLink,
+  centerOnMe() {
+    if (store.userLL) {
+      flyTo(store.userLL.lat, store.userLL.lng, 16);
+    } else {
+      import('./gps.js').then(({ startGPS }) => startGPS());
+    }
+  },
 };
 
-function setupContextMenu() {
+function setupMapHandlers() {
+  // Left-click: show a reverse-geocode popup (skip if a report is being placed)
+  map.on('click', async (e) => {
+    if (store.reportingType) return;
+    const { lat, lng } = e.latlng;
+    const coordStr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    const initHtml = popupCard(coordStr, null, lat, lng);
+    const popup = L.popup({ closeButton: true, maxWidth: 260 })
+      .setLatLng(e.latlng).setContent(initHtml).openOn(map);
+    try {
+      const data = await api.get(`/api/geocode/reverse?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}`);
+      const name = data.name || coordStr;
+      const sub = data.display ? data.display.split(',').slice(1, 3).join(',').trim() : '';
+      if (map.hasLayer(popup) || map._popup === popup) {
+        popup.setContent(popupCard(name, sub, lat, lng));
+      }
+    } catch { /* keep coordinate popup */ }
+  });
+
+  // Right-click / long-press: directions from/to menu
   map.on('contextmenu', (e) => {
     const { lat, lng } = e.latlng;
     const html = `<div class="pp-card"><div class="pp-body">
       <div class="pp-name">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
-      <div class="pp-btns" style="flex-direction:column">
+      <div class="pp-btns" style="flex-direction:column;gap:5px">
         <button class="pp-nav" onclick="AM._dirFrom(${lat},${lng})">🟢 Directions from here</button>
         <button class="pp-nav" onclick="AM._dirTo(${lat},${lng})">🔴 Directions to here</button>
-        <button class="pp-save" onclick="AM.savePlace(${lat},${lng},'Pinned spot')">⭐ Save this spot</button>
+        <button class="pp-save" style="flex:1" onclick="AM.savePlace(${lat},${lng},'Pinned spot')">⭐ Save this spot</button>
       </div>
     </div></div>`;
-    L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
+    L.popup({ maxWidth: 260 }).setLatLng(e.latlng).setContent(html).openOn(map);
   });
 
   window.AM._dirFrom = (lat, lng) => {
@@ -48,11 +76,25 @@ function setupContextMenu() {
   };
 }
 
+function popupCard(name, sub, lat, lng) {
+  const safeName = esc(name).replace(/'/g, '&#39;');
+  return `<div class="pp-card rg-popup">
+    <div class="pp-body">
+      <div class="pp-name">📍 ${esc(name)}</div>
+      ${sub ? `<div class="pp-desc">${esc(sub)}</div>` : ''}
+      <div class="pp-btns" style="margin-top:10px">
+        <button class="pp-nav" onclick="AM._dirTo(${lat},${lng})">🧭 Navigate</button>
+        <button class="pp-save" onclick="AM.savePlace(${lat},${lng},'${safeName.slice(0, 40)}')">⭐</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 async function init() {
   restoreTheme();
   initMap();
   setupAllAC();
-  setupContextMenu();
+  setupMapHandlers();
   startWidgetTimers();
 
   await Promise.all([

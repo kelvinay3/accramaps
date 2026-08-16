@@ -12,6 +12,10 @@ import { favoriteRoutes } from './routes/favorites.js';
 import { cityRoutes } from './routes/city.js';
 import { trotroRoutes } from './routes/trotro.js';
 import { tileRoutes } from './routes/tiles.js';
+import { reviewRoutes } from './routes/reviews.js';
+import { creditRoutes } from './routes/credits.js';
+import { adminRoutes } from './routes/admin.js';
+import { savedRoutes } from './routes/saved.js';
 
 // import.meta.url is unavailable after serverless bundling (esbuild emits
 // CJS) — fall back to cwd. Static serving is skipped there anyway: Netlify's
@@ -54,6 +58,10 @@ export function createApp(db, {
   app.use('/api/favorites', favoriteRoutes(db));
   app.use('/api/city', cityRoutes(db));
   app.use('/api/trotro', trotroRoutes(db));
+  app.use('/api/reviews', reviewRoutes(db));
+  app.use('/api/credits', creditRoutes(db));
+  app.use('/api/admin', adminRoutes(db));
+  app.use('/api/saved', savedRoutes(db));
   app.use('/tiles', tileRoutes(db));
 
   app.use((req, res, next) => {

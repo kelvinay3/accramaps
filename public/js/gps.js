@@ -19,7 +19,7 @@ export function startGPS() {
   btn.disabled = true;
   store.watchId = navigator.geolocation.watchPosition((pos) => {
     store.userLL = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    setUserMarker(store.userLL.lat, store.userLL.lng);
+    setUserMarker(store.userLL.lat, store.userLL.lng, pos.coords.accuracy || 0);
     if (!store.isTracking) {
       flyTo(store.userLL.lat, store.userLL.lng, 16);
       store.isTracking = true;

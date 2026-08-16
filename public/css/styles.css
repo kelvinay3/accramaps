@@ -334,3 +334,45 @@ html,body{height:100%;overflow:hidden;font-family:'Space Grotesk',sans-serif;bac
   .float-btns{bottom:84px}
   .voice-bar{bottom:130px}
 }
+
+/* TOOLTIPS — desktop hover labels on icon buttons */
+[data-tooltip]{position:relative}
+[data-tooltip]::before{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:rgba(15,13,10,.92);color:#fff;font-size:10px;font-weight:600;padding:5px 9px;border-radius:7px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;font-family:'Space Grotesk',sans-serif;letter-spacing:.2px;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+[data-tooltip]::after{content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);border:4px solid transparent;border-top-color:rgba(15,13,10,.92);pointer-events:none;opacity:0;transition:opacity .15s}
+[data-tooltip]:hover::before,[data-tooltip]:hover::after{opacity:1}
+
+/* RIDE-HAILING COMPARISON STRIP */
+.ride-row{display:none;flex-direction:column;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);margin-top:6px}
+.ride-row.show{display:flex}
+.ride-lbl{font-size:9px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:8px}
+.ride-apps{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.ride-apps::-webkit-scrollbar{height:0}
+.ride-card{min-width:66px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:9px;padding:9px 6px;text-align:center;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.ride-card:hover{background:rgba(255,255,255,.16);transform:translateY(-1px)}
+.ride-card:active{transform:scale(.96)}
+.ride-emoji{font-size:16px;line-height:1;margin-bottom:4px}
+.ride-fare{font-size:13px;font-weight:700;color:#FCD116;font-family:'JetBrains Mono',monospace;line-height:1.1}
+.ride-app-name{font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;font-weight:600}
+
+/* MARKER CLUSTER THEME */
+.marker-cluster-small{background-color:rgba(252,209,22,.22)}
+.marker-cluster-small div{background-color:rgba(252,209,22,.75);color:#1A1612}
+.marker-cluster-medium{background-color:rgba(0,107,63,.22)}
+.marker-cluster-medium div{background-color:rgba(0,107,63,.75);color:#fff}
+.marker-cluster-large{background-color:rgba(206,17,38,.22)}
+.marker-cluster-large div{background-color:rgba(206,17,38,.75);color:#fff}
+.marker-cluster div{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px}
+
+/* STAR RATINGS */
+.pp-stars{color:#F59E0B;font-size:12px;letter-spacing:1px}
+.pp-review-count{font-size:10px;color:#9C9484;margin-left:3px}
+
+/* REVERSE GEOCODE POPUP */
+.rg-popup .pp-body{padding:14px}
+.rg-popup .pp-name{font-size:13px}
+.rg-popup .pp-desc{font-size:11px;color:#6B7280;margin-top:4px;margin-bottom:0;line-height:1.5}
+.rg-loading{font-size:10px;color:#9C9484;font-style:italic;margin-top:4px}
+
+/* COMPASS BUTTON ANIMATION */
+#compassBtn{position:relative;overflow:visible}
+#compassBtn .cbear{display:inline-block;transition:transform .4s cubic-bezier(.4,0,.2,1)}

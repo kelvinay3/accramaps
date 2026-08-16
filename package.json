@@ -19,6 +19,7 @@
     "better-sqlite3": "^11.10.0",
     "express": "^4.21.2",
     "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "serverless-http": "^4.0.0"
   },
   "devDependencies": {
