@@ -10,6 +10,7 @@ export function setMode(id, mode) {
   document.querySelectorAll('.dmode').forEach((b) => b.classList.remove('active'));
   document.getElementById('dm-' + id).classList.add('active');
   store.travelMode = mode;
+  if (store.selFrom && store.selTo) startNav();
 }
 
 export function useMyLocation() {

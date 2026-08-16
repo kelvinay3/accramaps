@@ -374,11 +374,19 @@ html, body {
   <!-- ① ACCESS DENIED STATE -->
   <div class="admin-denied" id="deniedState" style="display:none">
     <div class="denied-icon">🔒</div>
-    <h2>Access Denied</h2>
-    <p>This dashboard is restricted to admin accounts only.<br>Sign in with an admin account to continue.</p>
-    <a href="/" class="btn btn-green" style="width:auto;display:inline-flex;text-decoration:none">
-      ← Back to Map
-    </a>
+    <h2>Admin Sign In</h2>
+    <p>Sign in with your AccraMaps admin account to access the dashboard.</p>
+    <div style="text-align:left;margin-bottom:16px">
+      <input type="email" id="adminEmail" placeholder="Email address"
+        style="width:100%;box-sizing:border-box;padding:10px 13px;margin-bottom:8px;background:var(--s2);border:1.5px solid var(--s3);border-radius:9px;font-size:13px;color:var(--txt);font-family:'Space Grotesk',sans-serif;outline:none;display:block"
+        autocomplete="email"/>
+      <input type="password" id="adminPassword" placeholder="Password"
+        style="width:100%;box-sizing:border-box;padding:10px 13px;margin-bottom:10px;background:var(--s2);border:1.5px solid var(--s3);border-radius:9px;font-size:13px;color:var(--txt);font-family:'Space Grotesk',sans-serif;outline:none;display:block"
+        autocomplete="current-password"/>
+      <div id="adminLoginErr" style="display:none;font-size:12px;color:var(--gh-red);margin-bottom:10px;padding:8px 10px;background:rgba(206,17,38,.07);border-radius:7px;line-height:1.4"></div>
+      <button id="adminLoginBtn" class="btn btn-green" style="width:100%">Sign in</button>
+    </div>
+    <a href="/" style="font-size:11px;color:var(--muted);text-decoration:none">← Back to Map</a>
   </div>
 
   <!-- ② LOADING SKELETONS (shown on first load) -->
@@ -465,6 +473,9 @@ html, body {
         </tbody>
       </table>
     </div>
+
+    <!-- Analytics section — populated by admin.js renderAnalytics() -->
+    <div id="analyticsSection"></div>
 
   </div><!-- /dashContent -->
 

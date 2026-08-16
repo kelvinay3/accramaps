@@ -32,5 +32,11 @@ export function adminRoutes(db) {
     res.json({ reports });
   }));
 
+  router.get('/analytics', ah(async (req, res) => {
+    if (!db.analytics) return res.json({ pageViews: 0, uniqueSessions: 0, topSearches: [], signups: 0, logins: 0, onboardViews: 0, onboardDone: 0 });
+    const summary = await db.analytics.summary();
+    res.json(summary);
+  }));
+
   return router;
 }

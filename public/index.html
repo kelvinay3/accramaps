@@ -448,6 +448,98 @@
   </div>
 </div>
 
+<!-- ONBOARDING MODAL — shown to new users and first-time visitors after sign-in -->
+<div class="onboard-modal" id="onboardModal">
+  <div class="onboard-inner">
+    <button class="onboard-close" onclick="AM.closeOnboard()">✕</button>
+    <div class="onboard-hero">
+      <div class="onboard-logo">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+      </div>
+      <h2 class="onboard-title">Akwaaba to AccraMaps! 🇬🇭</h2>
+      <p class="onboard-sub">Your Ghana-first GPS — here's how to get the most out of it.</p>
+    </div>
+    <div class="onboard-features">
+      <div class="onboard-feat">
+        <div class="onboard-feat-ico">🧭</div>
+        <div class="onboard-feat-body">
+          <div class="onboard-feat-title">Turn-by-turn directions</div>
+          <div class="onboard-feat-desc">Enter a destination and tap Go — voice guidance included. Switch between driving 🚗, biking 🚲, and walking 🚶 tabs.</div>
+        </div>
+      </div>
+      <div class="onboard-feat">
+        <div class="onboard-feat-ico">👮</div>
+        <div class="onboard-feat-body">
+          <div class="onboard-feat-title">Report Police &amp; Incidents</div>
+          <div class="onboard-feat-desc">Tap <strong>Report +</strong> in the Live Traffic section to flag police checkpoints, floods, accidents, potholes, or fuel queues. Updates in real time for everyone.</div>
+        </div>
+      </div>
+      <div class="onboard-feat">
+        <div class="onboard-feat-ico">🚌</div>
+        <div class="onboard-feat-body">
+          <div class="onboard-feat-title">Trotro routes</div>
+          <div class="onboard-feat-desc">Browse 35+ Accra trotro corridors — tap the 🚌 icon in directions, or scroll to <em>Trotro Routes</em> in the panel to find your nearest station.</div>
+        </div>
+      </div>
+      <div class="onboard-feat">
+        <div class="onboard-feat-ico">⭐</div>
+        <div class="onboard-feat-body">
+          <div class="onboard-feat-title">Save places &amp; Home / Work</div>
+          <div class="onboard-feat-desc">Tap 🔖 on any place popup to save it. Set your Home and Work for one-tap navigation — they appear at the top of My Places.</div>
+        </div>
+      </div>
+    </div>
+    <button class="onboard-cta" onclick="AM.closeOnboard()">Start Exploring 🗺️</button>
+  </div>
+</div>
+
+<!-- SUBSCRIPTION MODAL -->
+<div class="modal-bg" id="subModal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hdr"><h3>🪙 AccraMaps Plus</h3><button class="modal-x" onclick="AM.closeModal('subModal')">✕</button></div>
+    <p style="font-size:12px;color:var(--txt2);margin-bottom:14px;line-height:1.6">Upgrade for premium features — pay via MTN MoMo or Vodafone Cash.</p>
+    <div class="sub-tiers">
+      <div class="sub-tier tier-free">
+        <div class="tier-badge">Explorer</div>
+        <div class="tier-price">GH₵0</div>
+        <div class="tier-period">forever free</div>
+        <ul class="tier-perks">
+          <li>✓ Directions &amp; navigation</li>
+          <li>✓ Incident reporting</li>
+          <li>✓ 5 saved places</li>
+          <li>✓ Trotro routes</li>
+        </ul>
+        <button class="tier-btn current" disabled>Current plan</button>
+      </div>
+      <div class="sub-tier tier-mid">
+        <div class="tier-badge">Wayfinder</div>
+        <div class="tier-price">GH₵15</div>
+        <div class="tier-period">per month</div>
+        <ul class="tier-perks">
+          <li>✓ Everything in Explorer</li>
+          <li>✓ Unlimited saved places</li>
+          <li>✓ Priority route updates</li>
+          <li>✓ No ads (coming soon)</li>
+        </ul>
+        <button class="tier-btn" onclick="AM.startPaystack('wayfinder')">Subscribe</button>
+      </div>
+      <div class="sub-tier tier-pro">
+        <div class="tier-badge">Navigator <span class="tier-popular">HOT</span></div>
+        <div class="tier-price">GH₵30</div>
+        <div class="tier-period">per month</div>
+        <ul class="tier-perks">
+          <li>✓ Everything in Wayfinder</li>
+          <li>✓ Fuel price alerts</li>
+          <li>✓ Offline maps (coming)</li>
+          <li>✓ Early access features</li>
+        </ul>
+        <button class="tier-btn gold" onclick="AM.startPaystack('navigator')">Subscribe</button>
+      </div>
+    </div>
+    <p style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">Payments via MTN MoMo &amp; Vodafone Cash — launching soon</p>
+  </div>
+</div>
+
 <script src="/vendor/leaflet/leaflet.js"></script>
 <script src="/vendor/markercluster/leaflet.markercluster.js"></script>
 <script type="module" src="/js/app.js"></script>

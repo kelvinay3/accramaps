@@ -261,6 +261,40 @@ export function createSupabaseDb(rawUrl, serviceRoleKey) {
       },
     },
 
+    analytics: {
+      async log({ event, payload, sessionId, userId }) {
+        // Fire-and-forget; ignore errors so analytics never breaks the app
+        await client.from('site_events').insert({
+          event,
+          payload: payload ?? null,
+          session_id: sessionId ?? null,
+          user_id: userId ?? null,
+        }).then(() => {}).catch(() => {});
+      },
+      async summary() {
+        const cutoff7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+        const cutoff1d = new Date(Date.now() - 86_400_000).toISOString();
+        const [pv, us, sg, lg, ov, od, sr] = await Promise.all([
+          client.from('site_events').select('*', { count: 'exact', head: true }).eq('event', 'page_view').gt('created_at', cutoff7d),
+          client.from('site_events').select('session_id', { count: 'exact', head: true }).eq('event', 'page_view').gt('created_at', cutoff1d),
+          client.from('site_events').select('*', { count: 'exact', head: true }).eq('event', 'signup').gt('created_at', cutoff7d),
+          client.from('site_events').select('*', { count: 'exact', head: true }).eq('event', 'login').gt('created_at', cutoff7d),
+          client.from('site_events').select('*', { count: 'exact', head: true }).eq('event', 'onboard_view').gt('created_at', cutoff7d),
+          client.from('site_events').select('*', { count: 'exact', head: true }).eq('event', 'onboard_done').gt('created_at', cutoff7d),
+          client.rpc('top_searches', { since: cutoff7d, lim: 10 }).catch(() => ({ data: [] })),
+        ]);
+        return {
+          pageViews: pv.count ?? 0,
+          uniqueSessions: us.count ?? 0,
+          signups: sg.count ?? 0,
+          logins: lg.count ?? 0,
+          onboardViews: ov.count ?? 0,
+          onboardDone: od.count ?? 0,
+          topSearches: (sr.data || []).map((r) => ({ q: r.q, n: r.n })),
+        };
+      },
+    },
+
     // Tile blobs don't belong in Postgres — the tiles route falls back to an
     // in-memory LRU per serverless instance when this is null.
     tiles: null,

@@ -89,8 +89,10 @@ function reportPopupHtml(r) {
     <div class="pp-name">${r.icon} ${esc(r.label)}</div>
     ${r.description ? `<div class="pp-desc">${esc(r.description)}</div>` : ''}
     <div class="pp-desc">Reported ${timeAgo(r.created_at)} · ${r.confirms} confirm${r.confirms === 1 ? '' : 's'}</div>
+    <div class="pp-vote-lbl">Is this still there?</div>
     <div class="pp-btns">
-      <button class="pp-confirm" onclick="AM.confirmReport(${r.id})">👍 Still there</button>
+      <button class="pp-vote-yes" onclick="AM.voteReport(${r.id},'confirm')">✅ Still there</button>
+      <button class="pp-vote-no" onclick="AM.voteReport(${r.id},'gone')">🚫 It's gone</button>
     </div>
   </div></div>`;
 }
@@ -103,6 +105,30 @@ export async function confirmReport(id) {
     await refreshReports();
   } catch (err) {
     showInfo('Could not confirm', err.message, 'err');
+  }
+}
+
+export async function voteReport(id, vote) {
+  if (!store.user) {
+    showInfo('Sign in to vote', 'Create a free account to vote on reports', '');
+    return;
+  }
+  try {
+    await api.post(`/api/reports/${id}/vote`, {
+      vote,
+      lat: store.userLL?.lat || 0,
+      lng: store.userLL?.lng || 0,
+    });
+    map.closePopup();
+    if (vote === 'confirm') showInfo('✅ Confirmed!', 'Thanks — the report stays visible longer', 'ok');
+    else showInfo('🚫 Noted!', 'Thanks — this report may be removed soon', 'ok');
+    await refreshReports();
+  } catch (err) {
+    if (err.message?.includes('already voted')) {
+      showInfo('Already voted', 'You already voted on this report', '');
+    } else {
+      showInfo('Could not vote', err.message || 'Try again shortly', 'err');
+    }
   }
 }
 

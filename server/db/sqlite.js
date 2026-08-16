@@ -142,6 +142,17 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   used       INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS site_events (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  event      TEXT NOT NULL,
+  payload    TEXT,
+  session_id TEXT,
+  user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_se_event ON site_events(event);
+CREATE INDEX IF NOT EXISTS idx_se_created ON site_events(created_at);
 `;
 
 const nowIso = () => new Date().toISOString();
@@ -370,6 +381,28 @@ export async function createSqliteDb(dbPath) {
       },
       async markUsed(id) {
         raw.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?').run(id);
+      },
+    },
+
+    analytics: {
+      async log({ event, payload, sessionId, userId }) {
+        raw.prepare(
+          'INSERT INTO site_events (event, payload, session_id, user_id) VALUES (?, ?, ?, ?)'
+        ).run(event, payload ?? null, sessionId ?? null, userId ?? null);
+      },
+      async summary() {
+        const cutoff7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+        const cutoff1d = new Date(Date.now() - 86_400_000).toISOString();
+        const pageViews = raw.prepare("SELECT COUNT(*) AS n FROM site_events WHERE event='page_view' AND created_at > ?").get(cutoff7d)?.n ?? 0;
+        const uniqueSessions = raw.prepare("SELECT COUNT(DISTINCT session_id) AS n FROM site_events WHERE event='page_view' AND created_at > ?").get(cutoff1d)?.n ?? 0;
+        const signups = raw.prepare("SELECT COUNT(*) AS n FROM site_events WHERE event='signup' AND created_at > ?").get(cutoff7d)?.n ?? 0;
+        const logins = raw.prepare("SELECT COUNT(*) AS n FROM site_events WHERE event='login' AND created_at > ?").get(cutoff7d)?.n ?? 0;
+        const onboardViews = raw.prepare("SELECT COUNT(*) AS n FROM site_events WHERE event='onboard_view' AND created_at > ?").get(cutoff7d)?.n ?? 0;
+        const onboardDone = raw.prepare("SELECT COUNT(*) AS n FROM site_events WHERE event='onboard_done' AND created_at > ?").get(cutoff7d)?.n ?? 0;
+        const searches = raw.prepare(
+          "SELECT json_extract(payload,'$.q') AS q, COUNT(*) AS n FROM site_events WHERE event='search' AND payload IS NOT NULL AND created_at > ? GROUP BY q ORDER BY n DESC LIMIT 10"
+        ).all(cutoff7d).filter((r) => r.q);
+        return { pageViews, uniqueSessions, signups, logins, onboardViews, onboardDone, topSearches: searches };
       },
     },
 

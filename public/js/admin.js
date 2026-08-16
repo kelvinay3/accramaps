@@ -1,14 +1,17 @@
 const TOKEN_KEY = 'accramaps_token';
 
 function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
 
-async function req(path) {
+async function req(path, opts = {}) {
   const token = getToken();
   const res = await fetch(path, {
     headers: {
       Accept: 'application/json',
+      'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
+    ...opts,
   });
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
@@ -44,14 +47,87 @@ function esc(s) {
 const TYPE_ICONS = {
   go_slow: '🚦', flood: '🌊', accident: '💥', pothole: '🕳️',
   police: '👮', roadblock: '🚧', diversion: '↪️', fire: '🔥',
-  breakdown: '🚗', robbery: '⚠️',
+  breakdown: '🚗', robbery: '⚠️', closure: '🚧', fuel_queue: '⛽',
 };
+
+function renderAnalytics(a) {
+  const rate = a.onboardViews > 0 ? Math.round((a.onboardDone / a.onboardViews) * 100) : 0;
+  document.getElementById('analyticsSection').innerHTML = `
+    <div class="adm-sec" style="margin-top:32px">
+      <div class="adm-sec-title">📊 Analytics — Last 7 Days</div>
+      <span class="adm-count">live</span>
+    </div>
+    <div class="stat-grid analytics-grid">
+      <div class="stat-card">
+        <div class="stat-icon">👁</div>
+        <div class="stat-value" style="color:var(--gh-green)">${a.pageViews ?? 0}</div>
+        <div class="stat-label">Page Views (7d)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🌐</div>
+        <div class="stat-value" style="color:var(--gh-gold)">${a.uniqueSessions ?? 0}</div>
+        <div class="stat-label">Sessions Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🎉</div>
+        <div class="stat-value" style="color:var(--gh-red)">${a.signups ?? 0}</div>
+        <div class="stat-label">New Signups (7d)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🧭</div>
+        <div class="stat-value" style="color:var(--txt)">${a.logins ?? 0}</div>
+        <div class="stat-label">Logins (7d)</div>
+      </div>
+    </div>
+    <div class="adm-sec" style="margin-top:24px">
+      <div class="adm-sec-title">🎯 Onboarding Funnel</div>
+      <span class="adm-count">${rate}% completion</span>
+    </div>
+    <div style="background:var(--surf);border:1.5px solid var(--s3);border-radius:14px;padding:20px;margin-bottom:28px;box-shadow:var(--shadow)">
+      <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+        <div style="text-align:center;min-width:80px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--txt)">${a.onboardViews ?? 0}</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Popup Shown</div>
+        </div>
+        <div style="font-size:20px;color:var(--s4)">→</div>
+        <div style="text-align:center;min-width:80px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--gh-green)">${a.onboardDone ?? 0}</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Completed</div>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div style="height:8px;background:var(--s3);border-radius:100px;overflow:hidden">
+            <div style="height:100%;width:${rate}%;background:linear-gradient(90deg,var(--gh-green),var(--gh-gold));border-radius:100px;transition:width .8s ease"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">${rate}% of users who see the popup complete it</div>
+        </div>
+      </div>
+    </div>
+    ${(a.topSearches?.length > 0) ? `
+    <div class="adm-sec">
+      <div class="adm-sec-title">🔍 Top Searches (7d)</div>
+      <span class="adm-count">${a.topSearches.length}</span>
+    </div>
+    <div class="reports-wrap" style="margin-bottom:28px">
+      <table class="reports-table">
+        <thead><tr><th>#</th><th>Search Query</th><th>Times</th></tr></thead>
+        <tbody>
+          ${a.topSearches.map((s, i) => `<tr>
+            <td style="color:var(--muted);font-family:'JetBrains Mono',monospace">${i + 1}</td>
+            <td style="font-weight:600;color:var(--txt)">${esc(s.q)}</td>
+            <td><span class="rep-confirms">${s.n}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : '<p style="color:var(--muted);font-size:12px;margin-bottom:24px">No search data yet — analytics start collecting from today.</p>'}
+  `;
+}
 
 async function loadDashboard() {
   try {
-    const [stats, reps] = await Promise.all([
+    const [stats, reps, analytics] = await Promise.all([
       req('/api/admin/stats'),
       req('/api/admin/reports'),
+      req('/api/admin/analytics').catch(() => null),
     ]);
 
     document.getElementById('statPlaces').textContent = stats.places ?? '—';
@@ -81,6 +157,8 @@ async function loadDashboard() {
       }).join('');
     }
 
+    if (analytics) renderAnalytics(analytics);
+
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('dashContent').style.display = 'block';
   } catch (err) {
@@ -96,6 +174,27 @@ async function loadDashboard() {
           </button>
         </div>`;
     }
+  }
+}
+
+async function doAdminLogin() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPassword').value;
+  const errEl = document.getElementById('adminLoginErr');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Email and password required'; errEl.style.display = 'block'; return; }
+  try {
+    const data = await req('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    setToken(data.token);
+    document.getElementById('deniedState').style.display = 'none';
+    document.getElementById('loadingState').style.display = 'block';
+    await init();
+  } catch (err) {
+    errEl.textContent = err.message || 'Login failed';
+    errEl.style.display = 'block';
   }
 }
 
@@ -136,5 +235,13 @@ async function init() {
     await loadDashboard();
   });
 }
+
+// Wire up inline login form in denied state
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('adminLoginBtn');
+  if (btn) btn.addEventListener('click', doAdminLogin);
+  const pw = document.getElementById('adminPassword');
+  if (pw) pw.addEventListener('keydown', (e) => { if (e.key === 'Enter') doAdminLogin(); });
+});
 
 init();

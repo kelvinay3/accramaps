@@ -60,5 +60,31 @@ export function reportRoutes(db) {
     res.json({ report: decorate(updated) });
   }));
 
+  // Quorum voting — 'confirm' (still there) or 'gone' (resolved)
+  router.post('/:id/vote', ah(async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Sign in to vote on reports' });
+    const vote = String(req.body?.vote || '');
+    if (!['confirm', 'gone'].includes(vote)) {
+      return res.status(400).json({ error: "vote must be 'confirm' or 'gone'" });
+    }
+    if (!db.reportConfirmations) return res.status(503).json({ error: 'Voting unavailable' });
+    const result = await db.reportConfirmations.create({
+      reportId: Number(req.params.id),
+      userId: req.user.id,
+      vote,
+      lat: Number(req.body?.lat) || 0,
+      lng: Number(req.body?.lng) || 0,
+    });
+    if (!result) return res.status(409).json({ error: 'You already voted on this report' });
+    res.json({ result });
+  }));
+
+  // Get vote counts for a report
+  router.get('/:id/votes', ah(async (req, res) => {
+    if (!db.reportConfirmations) return res.json({ total: 0, yes: 0, no: 0 });
+    const counts = await db.reportConfirmations.counts(Number(req.params.id));
+    res.json({ counts });
+  }));
+
   return router;
 }

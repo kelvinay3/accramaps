@@ -2,6 +2,7 @@ import { api, setToken, clearToken, getToken } from './api.js';
 import { store } from './state.js';
 import { esc } from './util.js';
 import { openModal, closeModal, showInfo } from './ui.js';
+import { logEvent } from './analytics.js';
 
 let authTab = 'login';
 let _saveLabel = 'fav';
@@ -126,14 +127,16 @@ export async function submitAuth() {
   const name = document.getElementById('authName').value.trim();
   setAuthError('');
   try {
-    const data = authTab === 'login'
+    const isRegister = authTab === 'register';
+    const data = !isRegister
       ? await api.post('/api/auth/login', { email, password })
       : await api.post('/api/auth/register', { email, password, name });
     setToken(data.token);
     store.user = data.user;
     closeModal('authModal');
     showInfo(`👋 Akwaaba, ${data.user.name}!`, 'You are signed in — saved places now sync', 'ok');
-    onSignedIn();
+    logEvent(isRegister ? 'signup' : 'login', { email });
+    onSignedIn(isRegister);
   } catch (err) {
     setAuthError(err.message);
   }
@@ -150,12 +153,23 @@ export function logout() {
   showInfo('Signed out', 'See you soon 👋', '');
 }
 
-function onSignedIn() {
+function onSignedIn(isNew = false) {
   document.getElementById('authBtn').classList.add('active');
   document.getElementById('favSec').style.display = 'block';
   loadFavorites();
   loadCredits();
   loadSavedSlots();
+
+  // Show onboarding popup for new signups or first-timers
+  if (isNew || !localStorage.getItem('am_onboarded')) {
+    setTimeout(() => {
+      const modal = document.getElementById('onboardModal');
+      if (modal) {
+        modal.classList.add('open');
+        logEvent('onboard_view');
+      }
+    }, 800);
+  }
 }
 
 // ── Credits ────────────────────────────────────────────────────

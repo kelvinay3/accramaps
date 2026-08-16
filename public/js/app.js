@@ -1,30 +1,43 @@
 import { store } from './state.js';
 import { api } from './api.js';
 import { esc } from './util.js';
-import { initMap, resetView, toggleSat, map, flyTo } from './map.js';
+import { initMap, resetView, toggleSat, setMapDark, map, flyTo } from './map.js';
 import { setupAllAC, clearGS, clearDF, swapInputs } from './search.js';
 import { setMode, useMyLocation, startNav, stopNav, toggleVoice, navToCoords } from './directions.js';
 import { toggleGPS } from './gps.js';
 import { buildCatBars, loadInitialPlaces, loadHotAndQuick, nearbySearch, filterCat } from './places.js';
-import { initReports, toggleIncBar, toggleReportsLayer, confirmReport } from './reports.js';
+import { initReports, toggleIncBar, toggleReportsLayer, confirmReport, voteReport } from './reports.js';
 import { startWidgetTimers } from './widgets.js';
 import { loadTrotro, showTrotroDetail, showTrotroModal, navToTrotroStation } from './trotro.js';
 import { initAuth, showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace, setSaveLabel, goSavedSlot, showForgotView, submitForgot, submitReset } from './auth.js';
 import { openReviewModal, pickStar, submitReview } from './reviews.js';
 import { closeModal, openModal, toggleDark, restoreTheme, toggleBS, collapseBS, shareWA, copyLink } from './ui.js';
+import { logEvent } from './analytics.js';
 
 // Inline onclick handlers in index.html call through this global.
 window.AM = {
-  resetView, toggleSat, toggleDark, toggleBS, collapseBS,
+  resetView, toggleSat, toggleDark: () => { toggleDark(); setMapDark(store.darkOn); },
+  toggleBS, collapseBS,
   clearGS, clearDF, swapInputs,
   setMode, useMyLocation, startNav, stopNav, toggleVoice, navToCoords,
   toggleGPS,
   nearbySearch, filterCat,
-  toggleIncBar, toggleReportsLayer, confirmReport,
+  toggleIncBar, toggleReportsLayer, confirmReport, voteReport,
   showTrotroDetail, showTrotroModal, navToTrotroStation,
   showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace, setSaveLabel, goSavedSlot, showForgotView, submitForgot, submitReset,
   openReviewModal, pickStar, submitReview,
   closeModal, showShareModal: () => openModal('shareModal'), shareWA, copyLink,
+  showSubModal: () => openModal('subModal'),
+  closeOnboard() {
+    const modal = document.getElementById('onboardModal');
+    if (modal) modal.classList.remove('open');
+    localStorage.setItem('am_onboarded', '1');
+    logEvent('onboard_done');
+  },
+  startPaystack(plan) {
+    // Paystack integration stub — show info for now
+    import('./ui.js').then(({ showInfo }) => showInfo('Coming Soon', `${plan.charAt(0).toUpperCase() + plan.slice(1)} plan payments launching soon via MTN MoMo & Vodafone Cash`, ''));
+  },
   centerOnMe() {
     if (store.userLL) {
       flyTo(store.userLL.lat, store.userLL.lng, 16);
@@ -92,12 +105,34 @@ function popupCard(name, sub, lat, lng) {
   </div>`;
 }
 
+// Track search queries for analytics
+function trackSearch(query) {
+  if (query && query.length > 1) logEvent('search', { q: query.slice(0, 100) });
+}
+
+// Patch search inputs to fire analytics on submission
+function patchSearchAnalytics() {
+  const inputs = ['gSearch', 'mSearch', 'fromInput', 'toInput'];
+  inputs.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && el.value.trim()) trackSearch(el.value.trim());
+    });
+  });
+}
+
 async function init() {
   restoreTheme();
   initMap();
+  setMapDark(store.darkOn);
   setupAllAC();
   setupMapHandlers();
+  patchSearchAnalytics();
   startWidgetTimers();
+
+  // Log page view
+  logEvent('page_view', { path: location.pathname });
 
   await Promise.all([
     buildCatBars(),

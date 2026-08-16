@@ -6,6 +6,8 @@ import { ah } from '../util/asyncHandler.js';
 // be swapped without touching clients, and requests carry a proper
 // User-Agent per the OSM tile usage policy.
 
+const CARTO_SUBS = ['a', 'b', 'c', 'd'];
+
 const SOURCES = {
   osm: {
     url: (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
@@ -14,6 +16,16 @@ const SOURCES = {
   sat: {
     // Esri World Imagery uses {z}/{y}/{x} order
     url: (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+    maxZoom: 19,
+  },
+  carto: {
+    // Carto Voyager — clean, modern, no API key required
+    url: (z, x, y) => `https://${CARTO_SUBS[x % 4]}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`,
+    maxZoom: 19,
+  },
+  dark: {
+    // Carto Dark Matter — for dark mode
+    url: (z, x, y) => `https://${CARTO_SUBS[x % 4]}.basemaps.cartocdn.com/dark_all/${z}/${x}/${y}.png`,
     maxZoom: 19,
   },
 };
