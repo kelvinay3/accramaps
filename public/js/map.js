@@ -183,8 +183,9 @@ export function placePopupHtml(p) {
       </div>
       ${p.description ? `<div class="pp-desc">${esc(p.description)}</div>` : ''}
       <div class="pp-btns">
-        <button class="pp-nav" onclick="AM.navToCoords(${p.lat},${p.lng},'${name.replace(/'/g, "\\'")}')">🧭 Navigate</button>
-        <button class="pp-save" onclick="AM.savePlace(${p.lat},${p.lng},'${name.replace(/'/g, "\\'")}')" title="Save to My Places">⭐</button>
+        <button class="pp-nav" onclick="AM.navToCoords(${p.lat},${p.lng},'${name.replace(/'/g, "\\'")}')">🧭 Go</button>
+        <button class="pp-reviews" onclick="AM.openReviewModal(${p.id},'${name.replace(/'/g, "\\'")}')">⭐ Reviews</button>
+        <button class="pp-save" onclick="AM.savePlace(${p.lat},${p.lng},'${name.replace(/'/g, "\\'")}')" title="Save">🔖</button>
       </div>
     </div>
   </div>`;

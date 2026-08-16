@@ -9,7 +9,8 @@ import { buildCatBars, loadInitialPlaces, loadHotAndQuick, nearbySearch, filterC
 import { initReports, toggleIncBar, toggleReportsLayer, confirmReport } from './reports.js';
 import { startWidgetTimers } from './widgets.js';
 import { loadTrotro, showTrotroDetail, showTrotroModal, navToTrotroStation } from './trotro.js';
-import { initAuth, showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace } from './auth.js';
+import { initAuth, showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace, setSaveLabel, goSavedSlot } from './auth.js';
+import { openReviewModal, pickStar, submitReview } from './reviews.js';
 import { closeModal, openModal, toggleDark, restoreTheme, toggleBS, collapseBS, shareWA, copyLink } from './ui.js';
 
 // Inline onclick handlers in index.html call through this global.
@@ -21,7 +22,8 @@ window.AM = {
   nearbySearch, filterCat,
   toggleIncBar, toggleReportsLayer, confirmReport,
   showTrotroDetail, showTrotroModal, navToTrotroStation,
-  showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace,
+  showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace, setSaveLabel, goSavedSlot,
+  openReviewModal, pickStar, submitReview,
   closeModal, showShareModal: () => openModal('shareModal'), shareWA, copyLink,
   centerOnMe() {
     if (store.userLL) {

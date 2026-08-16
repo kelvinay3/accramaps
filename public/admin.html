@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AccraMaps Admin</title>
+<meta name="description" content="AccraMaps admin dashboard — site statistics and incident reports.">
+<meta name="theme-color" content="#006B3F">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Familjen+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css">
+<style>
+/* ── Admin overrides: allow page scroll (main app locks overflow) ── */
+html, body {
+  height: auto;
+  overflow: auto;
+  min-height: 100%;
+}
+
+.admin-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* ── Main content area ── */
+.admin-main {
+  flex: 1;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+  width: 100%;
+}
+
+/* ── Page heading ── */
+.admin-heading {
+  margin-bottom: 26px;
+}
+.admin-heading h1 {
+  font-family: 'Familjen Grotesk', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--txt);
+  letter-spacing: -.3px;
+  margin-bottom: 4px;
+}
+.admin-heading p {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Stat grid ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 36px;
+}
+@media (max-width: 680px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.stat-card {
+  background: var(--surf);
+  border: 1.5px solid var(--s3);
+  border-radius: 14px;
+  padding: 20px 18px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow .18s, transform .18s;
+  cursor: default;
+  user-select: none;
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  font-size: 22px;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--txt);
+  margin-bottom: 6px;
+  transition: color .2s;
+}
+.stat-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Coloured accents per card */
+.stat-card.places  .stat-value { color: var(--gh-green); }
+.stat-card.users   .stat-value { color: #B8860B; }
+[data-theme="dark"] .stat-card.users .stat-value { color: var(--gh-gold); }
+.stat-card.trotro  .stat-value { color: var(--gh-red); }
+.stat-card.active  .stat-value { color: var(--txt); }
+
+/* ── Skeleton loader ── */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.sk-value  { width: 70%; height: 38px; margin-bottom: 10px; }
+.sk-label  { width: 55%; height: 12px; }
+
+/* ── Section header ── */
+.adm-sec {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.adm-sec-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.adm-sec-title::after {
+  content: '';
+  width: 40px;
+  height: 1px;
+  background: var(--s3);
+}
+.adm-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--s2);
+  border: 1.5px solid var(--s3);
+  border-radius: 100px;
+  padding: 2px 9px;
+}
+
+/* ── Reports table wrapper ── */
+.reports-wrap {
+  background: var(--surf);
+  border: 1.5px solid var(--s3);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  overflow-x: auto;   /* horizontal scroll on narrow screens */
+}
+
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px;
+}
+.reports-table th {
+  background: var(--s2);
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1.5px solid var(--s3);
+  white-space: nowrap;
+}
+.reports-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--s2);
+  vertical-align: middle;
+  font-size: 12px;
+  color: var(--txt2);
+}
+.reports-table tr:last-child td { border-bottom: none; }
+.reports-table tbody tr:hover td { background: var(--s2); transition: background .1s; }
+
+.rep-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--s2);
+  border: 1.5px solid var(--s3);
+  border-radius: 7px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--txt);
+  white-space: nowrap;
+}
+.rep-coord {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.rep-confirms {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gh-green);
+}
+.rep-time {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.empty-row {
+  text-align: center;
+  padding: 36px 20px !important;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ── Denied state ── */
+.admin-denied {
+  background: var(--surf);
+  border: 1.5px solid rgba(206,17,38,.25);
+  border-radius: 16px;
+  padding: 48px 28px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  max-width: 420px;
+  margin: 40px auto 0;
+}
+.admin-denied .denied-icon { font-size: 48px; margin-bottom: 14px; }
+.admin-denied h2 {
+  font-family: 'Familjen Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gh-red);
+  margin-bottom: 8px;
+}
+.admin-denied p {
+  font-size: 13px;
+  color: var(--txt2);
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+
+/* ── User pill in topbar ── */
+.user-pill {
+  align-items: center;
+  gap: 8px;
+  background: var(--s2);
+  border: 1.5px solid var(--s3);
+  border-radius: 100px;
+  padding: 4px 13px 4px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt);
+  white-space: nowrap;
+  /* shown/hidden via admin.js */
+}
+.user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gh-green), var(--gh-gold));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* ── Admin badge chip ── */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,107,63,.1);
+  border: 1.5px solid rgba(0,107,63,.2);
+  border-radius: 100px;
+  padding: 2px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--gh-green);
+}
+[data-theme="dark"] .admin-badge {
+  background: rgba(0,107,63,.18);
+  border-color: rgba(0,107,63,.35);
+}
+
+/* ── Topbar right cluster ── */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ── Responsive topbar text hide ── */
+@media (max-width: 520px) {
+  .btn-label { display: none; }
+  .logo-sub  { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="admin-wrap">
+
+<!-- Ghana flag kente stripe -->
+<div class="kente"></div>
+
+<!-- Top bar — same structure as index.html -->
+<header class="topbar">
+  <a class="logo" href="/" style="text-decoration:none">
+    <div class="logo-gem">
+      <svg class="logo-star" viewBox="0 0 24 24" fill="black">
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <div class="logo-name">Accra<em>Maps</em></div>
+      <div class="logo-sub">Admin Dashboard</div>
+    </div>
+  </a>
+
+  <div class="topbar-right">
+    <!-- User pill — populated by admin.js -->
+    <div class="user-pill" id="userPill" style="display:none">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <span id="userName"></span>
+      <span class="admin-badge">Admin</span>
+    </div>
+
+    <button class="icon-btn" id="darkBtn" data-tooltip="Toggle dark mode" title="Toggle dark mode">🌙</button>
+
+    <button class="icon-btn" id="refreshBtn" data-tooltip="Refresh data" title="Refresh" style="width:auto;padding:0 12px;gap:6px;font-size:12px;font-weight:600">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+        <path d="M21 3v5h-5"/>
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+        <path d="M8 16H3v5"/>
+      </svg>
+      <span class="btn-label">Refresh</span>
+    </button>
+
+    <a href="/" class="btn btn-green" style="width:auto;padding:0 14px;height:36px;text-decoration:none;font-size:12px">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      <span class="btn-label">Back to Map</span>
+    </a>
+  </div>
+</header>
+
+<!-- Main content -->
+<main class="admin-main" id="adminMain">
+
+  <!-- ① ACCESS DENIED STATE -->
+  <div class="admin-denied" id="deniedState" style="display:none">
+    <div class="denied-icon">🔒</div>
+    <h2>Access Denied</h2>
+    <p>This dashboard is restricted to admin accounts only.<br>Sign in with an admin account to continue.</p>
+    <a href="/" class="btn btn-green" style="width:auto;display:inline-flex;text-decoration:none">
+      ← Back to Map
+    </a>
+  </div>
+
+  <!-- ② LOADING SKELETONS (shown on first load) -->
+  <div id="loadingState">
+    <div class="admin-heading">
+      <h1>Site Overview</h1>
+      <p>Loading statistics…</p>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="skeleton" style="width:32px;height:22px;margin-bottom:14px;border-radius:6px"></div>
+        <div class="skeleton sk-value"></div>
+        <div class="skeleton sk-label"></div>
+      </div>
+      <div class="stat-card">
+        <div class="skeleton" style="width:32px;height:22px;margin-bottom:14px;border-radius:6px"></div>
+        <div class="skeleton sk-value"></div>
+        <div class="skeleton sk-label"></div>
+      </div>
+      <div class="stat-card">
+        <div class="skeleton" style="width:32px;height:22px;margin-bottom:14px;border-radius:6px"></div>
+        <div class="skeleton sk-value"></div>
+        <div class="skeleton sk-label"></div>
+      </div>
+      <div class="stat-card">
+        <div class="skeleton" style="width:32px;height:22px;margin-bottom:14px;border-radius:6px"></div>
+        <div class="skeleton sk-value"></div>
+        <div class="skeleton sk-label"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ DASHBOARD CONTENT (hidden until data loads) -->
+  <div id="dashContent" style="display:none">
+
+    <div class="admin-heading">
+      <h1>Site Overview</h1>
+      <p id="lastRefreshed">Loaded just now</p>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+      <div class="stat-card places">
+        <div class="stat-icon">📍</div>
+        <div class="stat-value" id="statPlaces">—</div>
+        <div class="stat-label">Total Places</div>
+      </div>
+      <div class="stat-card users">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value" id="statUsers">—</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+      <div class="stat-card trotro">
+        <div class="stat-icon">🚌</div>
+        <div class="stat-value" id="statTrotro">—</div>
+        <div class="stat-label">Trotro Routes</div>
+      </div>
+      <div class="stat-card active">
+        <div class="stat-icon">🚦</div>
+        <div class="stat-value" id="statActive">—</div>
+        <div class="stat-label">Active Incidents</div>
+      </div>
+    </div>
+
+    <!-- Active incidents table -->
+    <div class="adm-sec">
+      <div class="adm-sec-title">🚦 Active Incidents</div>
+      <span class="adm-count" id="reportCount">—</span>
+    </div>
+
+    <div class="reports-wrap">
+      <table class="reports-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Location</th>
+            <th>Confirms</th>
+            <th>Reported</th>
+            <th>Expires</th>
+          </tr>
+        </thead>
+        <tbody id="reportsBody">
+          <tr><td colspan="5" class="empty-row">Loading incidents…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /dashContent -->
+
+</main>
+</div><!-- /admin-wrap -->
+
+<!-- Dark mode: run sync to avoid flash of wrong theme -->
+<script>
+(function () {
+  const saved = localStorage.getItem('accramaps_theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('darkBtn').textContent = (saved === 'dark') ? '☀️' : '🌙';
+  document.getElementById('darkBtn').addEventListener('click', function () {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    this.textContent = next === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('accramaps_theme', next);
+  });
+})();
+</script>
+
+<script type="module" src="/js/admin.js"></script>
+</body>
+</html>
