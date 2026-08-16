@@ -73,11 +73,13 @@ export function createApp(db, {
     app.get('*', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
   }
 
-  // Central error handler — never leak stack traces to clients.
+  // Central error handler — no stack traces to clients, but do surface the
+  // error message itself (PostgREST/driver messages are how deploy problems
+  // get diagnosed, and they carry no secrets).
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     console.error(err);
-    res.status(err.status || 500).json({ error: err.expose ? err.message : 'Something went wrong' });
+    res.status(err.status || 500).json({ error: 'Something went wrong', detail: err.message });
   });
 
   return app;
