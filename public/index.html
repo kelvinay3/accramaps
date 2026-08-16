@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AccraMaps — Navigate Ghana</title>
+<meta name="description" content="Ghana-first GPS navigation — directions, trotro routes, live incident reports and places across Accra and Ghana.">
+<meta name="theme-color" content="#006B3F">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Familjen+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="app-wrap">
+
+<div class="kente"></div>
+
+<header class="topbar">
+  <div class="logo" onclick="AM.resetView()">
+    <div class="logo-gem">
+      <svg class="logo-star" viewBox="0 0 24 24" fill="black"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+    </div>
+    <div class="logo-text">
+      <div class="logo-name">Accra<em>Maps</em></div>
+      <div class="logo-sub">Navigate Ghana</div>
+    </div>
+  </div>
+
+  <div class="top-search">
+    <div class="ac-wrap">
+      <div class="search-row">
+        <svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="gSearch" type="text" placeholder="Search streets, places, areas in Ghana…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;line-height:1" onclick="AM.clearGS()">✕</button>
+      </div>
+      <div class="ac-drop" id="gDrop"></div>
+    </div>
+  </div>
+
+  <div class="top-actions">
+    <div class="icon-btn" id="gpsTopBtn" onclick="AM.toggleGPS()" title="My Location">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg>
+    </div>
+    <div class="icon-btn" id="darkBtn" onclick="AM.toggleDark()" title="Dark mode">🌙</div>
+    <div class="icon-btn" onclick="AM.showShareModal()" title="Share">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+    </div>
+    <div class="icon-btn" id="authBtn" onclick="AM.showAuthModal()" title="Account">👤</div>
+  </div>
+</header>
+
+<div class="app-body">
+<div class="panel">
+<div class="panel-scroll">
+
+  <!-- DIRECTIONS HERO -->
+  <div class="dir-hero">
+    <div class="dir-header">
+      <div class="dir-title">🧭 Get Directions</div>
+      <div class="dir-modes">
+        <div class="dmode active" id="dm-drive" onclick="AM.setMode('drive','driving')" title="Drive">🚗</div>
+        <div class="dmode" id="dm-bike" onclick="AM.setMode('bike','cycling')" title="Bike">🚲</div>
+        <div class="dmode" id="dm-walk" onclick="AM.setMode('walk','walking')" title="Walk">🚶</div>
+        <div class="dmode" id="dm-trotro" onclick="AM.showTrotroModal()" title="Trotro info">🚌</div>
+      </div>
+    </div>
+
+    <div class="dir-connector">
+      <div class="dir-dots">
+        <div class="dot-start"></div>
+        <div class="dot-line"></div>
+        <div class="dot-end"></div>
+      </div>
+      <div class="dir-fields">
+        <div class="ac-wrap">
+          <div class="dir-field">
+            <input class="dir-input" id="fromInput" type="text" placeholder="From — starting point" autocomplete="off" autocorrect="off" spellcheck="false"/>
+            <button class="dir-clr" onclick="AM.clearDF('from')" tabindex="-1">✕</button>
+          </div>
+          <div class="ac-drop" id="fromDrop"></div>
+        </div>
+        <div class="ac-wrap">
+          <div class="dir-field">
+            <input class="dir-input" id="toInput" type="text" placeholder="To — destination" autocomplete="off" autocorrect="off" spellcheck="false"/>
+            <button class="dir-clr" onclick="AM.clearDF('to')" tabindex="-1">✕</button>
+          </div>
+          <div class="ac-drop" id="toDrop"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dir-actions">
+      <div class="swap-btn" onclick="AM.swapInputs()" title="Swap">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
+      </div>
+      <button class="use-loc-btn" onclick="AM.useMyLocation()">📍 My location</button>
+      <button class="go-btn" id="goBtn" onclick="AM.startNav()">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>
+        Go
+      </button>
+    </div>
+
+    <div class="info-card" id="infoCard"><div class="ic-title" id="icT"></div><div class="ic-body" id="icB"></div></div>
+
+    <div class="route-result" id="routeResult">
+      <div class="rr-route" id="rrRoute">—</div>
+      <div class="rr-stats">
+        <div class="rr-stat"><div class="rr-val" id="sdist">—</div><div class="rr-lbl">km</div></div>
+        <div class="rr-stat"><div class="rr-val" id="stime">—</div><div class="rr-lbl">min</div></div>
+        <div class="rr-stat"><div class="rr-val" id="seta">—</div><div class="rr-lbl">ETA</div></div>
+      </div>
+      <div class="rr-route" id="rrTrafficNote" style="margin-bottom:0"></div>
+      <div class="tbt-steps" id="tbtSteps"></div>
+      <div class="rr-btns">
+        <button class="rr-btn rr-stop" onclick="AM.stopNav()">⏹ Stop</button>
+        <button class="rr-btn rr-voice" id="voiceBtn" onclick="AM.toggleVoice()">🔊 Voice</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEATHER + VIBE -->
+  <div class="p-sec">
+    <div class="weather-band">
+      <div class="w-ico" id="wIco">🌤️</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <div class="w-temp" id="wTemp">—°C</div>
+          <div class="w-desc" id="wDesc">Loading · Accra</div>
+        </div>
+        <div class="w-extra" id="wExtra">&nbsp;</div>
+      </div>
+    </div>
+    <div class="detty" id="dettyBanner">
+      <div class="detty-title">🎉 Detty December!</div>
+      <div class="detty-body">Heavy traffic citywide · Accra is popping 🇬🇭</div>
+    </div>
+    <div class="vibe-card">
+      <div class="vibe-top">
+        <div class="vibe-title">Accra Vibe Score</div>
+        <div class="vibe-score" id="vibeScore">—</div>
+      </div>
+      <div class="vibe-bar"><div class="vibe-fill" id="vibeFill" style="width:0%"></div></div>
+      <div class="vibe-sub" id="vibeSub">Calculating city energy…</div>
+    </div>
+  </div>
+
+  <!-- SAVED PLACES -->
+  <div class="p-sec" id="favSec" style="display:none">
+    <div class="sec-lbl">⭐ My Places</div>
+    <div class="place-list" id="favList"></div>
+  </div>
+
+  <!-- WHAT'S HOT -->
+  <div class="p-sec">
+    <div class="sec-lbl">🔥 What's Hot Tonight</div>
+    <div class="hot-scroll" id="hotScroll"></div>
+  </div>
+
+  <!-- QUICK ACCESS -->
+  <div class="p-sec">
+    <div class="sec-lbl">⚡ Quick Access</div>
+    <div class="quick-grid" id="quickGrid"></div>
+  </div>
+
+  <!-- TROTRO -->
+  <div class="p-sec">
+    <div class="sec-lbl">🚌 Trotro Routes</div>
+    <div class="trotro-list" id="trotroList"></div>
+  </div>
+
+  <!-- TRAFFIC + INCIDENTS -->
+  <div class="p-sec">
+    <div class="sec-lbl">🚦 Live Traffic</div>
+    <div class="traffic-row">
+      <div class="t-dot" id="tDot"></div>
+      <div style="flex:1"><div class="t-lbl" id="tLbl">Checking…</div><div class="t-detail" id="tDetail"></div></div>
+      <button class="report-plus-btn" onclick="AM.toggleIncBar()">Report +</button>
+    </div>
+    <div class="inc-bar" id="incBar" style="display:none;margin-top:8px"></div>
+    <div class="inc-hint" id="incHint" style="display:none">Tap the map to place your report 📍</div>
+  </div>
+
+  <!-- NEAR ME -->
+  <div class="p-sec">
+    <div class="sec-lbl">📍 Near Me</div>
+    <div class="nearby-grid">
+      <div class="nearby-card" onclick="AM.nearbySearch('nightlife','Clubs')"><div class="nearby-ico">🎉</div><div class="nearby-lbl">Clubs</div></div>
+      <div class="nearby-card" onclick="AM.nearbySearch('restaurant','Food')"><div class="nearby-ico">🍽️</div><div class="nearby-lbl">Food</div></div>
+      <div class="nearby-card" onclick="AM.nearbySearch('fuel','Fuel')"><div class="nearby-ico">⛽</div><div class="nearby-lbl">Fuel</div></div>
+      <div class="nearby-card" onclick="AM.nearbySearch('atm','ATMs')"><div class="nearby-ico">🏧</div><div class="nearby-lbl">ATMs</div></div>
+      <div class="nearby-card" onclick="AM.nearbySearch('hospital','Medical')"><div class="nearby-ico">🏥</div><div class="nearby-lbl">Medical</div></div>
+      <div class="nearby-card" onclick="AM.nearbySearch('mall','Malls')"><div class="nearby-ico">🛍️</div><div class="nearby-lbl">Malls</div></div>
+    </div>
+  </div>
+
+  <!-- BROWSE -->
+  <div class="p-sec">
+    <div class="sec-lbl">🗂 Browse</div>
+    <div class="cat-scroll" id="catBar"></div>
+  </div>
+
+  <!-- GPS -->
+  <div class="p-sec">
+    <button class="btn btn-green" id="gpsBtn" onclick="AM.toggleGPS()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg>
+      Locate Me
+    </button>
+  </div>
+
+  <!-- PLACES -->
+  <div class="p-sec" style="padding-bottom:20px">
+    <div class="sec-lbl" id="listLbl">✨ Places in Accra</div>
+    <div class="place-list" id="placeList">
+      <div class="loading-row"><div class="spinner"></div>Loading places near Accra…</div>
+    </div>
+  </div>
+
+</div><!-- panel-scroll -->
+</div><!-- panel -->
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- FLOAT -->
+<div class="float-btns">
+  <div class="fbtn" id="satBtn" onclick="AM.toggleSat()" title="Satellite">🛰️</div>
+  <div class="fbtn on" id="trafficBtn" onclick="AM.toggleReportsLayer()" title="Incidents">🚦</div>
+</div>
+
+<!-- SPEED HUD -->
+<div class="speed-float" id="speedFloat">
+  <div class="sp-val" id="spVal">0</div>
+  <div class="sp-unit">km/h</div>
+</div>
+
+<!-- VOICE BAR -->
+<div class="voice-bar" id="voiceBar">
+  <span class="v-ico">🔊</span>
+  <span id="voiceTxt">AccraMaps Navigation</span>
+</div>
+
+</div><!-- app-body -->
+
+<!-- MOBILE SHEET -->
+<div class="bs" id="bs">
+  <div class="bs-handle"></div>
+  <div class="bs-peek" onclick="AM.toggleBS()">
+    <div style="font-size:20px">🗺️</div>
+    <div class="bs-peek-txt">
+      <div class="bs-title">AccraMaps</div>
+      <div class="bs-sub" id="bsSub">Search or explore Ghana</div>
+    </div>
+    <div style="color:var(--muted);font-size:16px;margin-left:auto" id="bsChev">⌃</div>
+  </div>
+  <div class="bs-scroll">
+    <div style="margin-bottom:12px">
+      <div class="ac-wrap" style="margin-bottom:7px">
+        <div class="dir-field">
+          <input class="dir-input" id="mFromInput" type="text" placeholder="From…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+        </div>
+        <div class="ac-drop" id="mFromDrop"></div>
+      </div>
+      <div class="ac-wrap" style="margin-bottom:7px">
+        <div class="dir-field">
+          <input class="dir-input" id="mToInput" type="text" placeholder="To…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+        </div>
+        <div class="ac-drop" id="mToDrop"></div>
+      </div>
+      <button class="go-btn" onclick="AM.startNav()">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>
+        Get Directions
+      </button>
+    </div>
+    <div class="ac-wrap" style="margin-bottom:10px">
+      <div class="search-row">
+        <svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="mSearch" type="text" placeholder="Search Ghana…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      </div>
+      <div class="ac-drop" id="mDrop"></div>
+    </div>
+    <div class="cat-scroll" id="mCatBar" style="margin-bottom:12px"></div>
+    <div class="place-list" id="mPlaceList"></div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="statusbar">
+  <div class="s-live"><div class="s-dot"></div>AccraMaps · Ghana 🇬🇭</div>
+  <div id="coordsBar">5.6037° N, 0.1870° W</div>
+  <div id="statusR">Navigate Ghana</div>
+</div>
+
+</div><!-- app-wrap -->
+
+<!-- SHARE MODAL -->
+<div class="modal-bg" id="shareModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3>📤 Share AccraMaps</h3><button class="modal-x" onclick="AM.closeModal('shareModal')">✕</button></div>
+    <p>Share your location or current route with friends and family in Ghana.</p>
+    <div class="modal-body">
+      <button class="btn btn-green" onclick="AM.shareWA()">💬 Share via WhatsApp</button>
+      <button class="btn btn-gold" onclick="AM.copyLink()">🔗 Copy Link</button>
+      <button class="btn btn-red btn-sm" onclick="AM.closeModal('shareModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TROTRO MODAL -->
+<div class="modal-bg" id="trotroModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="trotroTitle">🚌 Trotro Info</h3><button class="modal-x" onclick="AM.closeModal('trotroModal')">✕</button></div>
+    <div class="trotro-detail" id="trotroDetail"></div>
+    <div class="modal-body">
+      <button class="btn btn-gold" onclick="AM.navToTrotroStation()">📍 Navigate to Station</button>
+      <button class="btn btn-red btn-sm" onclick="AM.closeModal('trotroModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-bg" id="authModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="authTitle">👤 Welcome to AccraMaps</h3><button class="modal-x" onclick="AM.closeModal('authModal')">✕</button></div>
+    <div id="authForms">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="AM.switchAuthTab('login')">Sign in</button>
+        <button class="auth-tab" id="tabRegister" onclick="AM.switchAuthTab('register')">Create account</button>
+      </div>
+      <div class="modal-body">
+        <input class="auth-input" id="authName" type="text" placeholder="Your name" style="display:none" autocomplete="name"/>
+        <input class="auth-input" id="authEmail" type="email" placeholder="Email" autocomplete="email"/>
+        <input class="auth-input" id="authPassword" type="password" placeholder="Password (8+ characters)" autocomplete="current-password"/>
+        <div class="auth-error" id="authError"></div>
+        <button class="btn btn-green" id="authSubmit" onclick="AM.submitAuth()">Sign in</button>
+      </div>
+    </div>
+    <div id="authProfile" style="display:none">
+      <p id="profileInfo"></p>
+      <div class="modal-body">
+        <button class="btn btn-red btn-sm" onclick="AM.logout()">Sign out</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE PLACE MODAL -->
+<div class="modal-bg" id="saveModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3>⭐ Save Place</h3><button class="modal-x" onclick="AM.closeModal('saveModal')">✕</button></div>
+    <div class="modal-body">
+      <input class="auth-input" id="saveName" type="text" placeholder="Name (e.g. Home, Auntie's shop)"/>
+      <input class="auth-input" id="saveGps" type="text" placeholder="GhanaPost GPS (optional, e.g. GA-183-8164)"/>
+      <input class="auth-input" id="saveNote" type="text" placeholder="Note (optional)"/>
+      <div class="auth-error" id="saveError"></div>
+      <button class="btn btn-gold" onclick="AM.submitSavePlace()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
