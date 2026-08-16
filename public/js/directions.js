@@ -115,6 +115,7 @@ function renderRoute(from, to, route) {
   store.routeSteps = route.steps || [];
   store.activeStep = -1;
   buildTBT(store.routeSteps);
+  renderRideStrip(route.distance_m);
   collapseBS();
 
   if (store.voiceEnabled && store.routeSteps.length > 0) {
@@ -125,6 +126,7 @@ function renderRoute(from, to, route) {
 export function stopNav() {
   clearRoute();
   document.getElementById('routeResult').classList.remove('show');
+  document.getElementById('rideRow').classList.remove('show');
   ['fromInput', 'toInput', 'mFromInput', 'mToInput'].forEach((id) => { document.getElementById(id).value = ''; });
   store.selFrom = null;
   store.selTo = null;
@@ -133,6 +135,29 @@ export function stopNav() {
   hideInfo();
   hideVoice();
   restoreGoBtn();
+}
+
+const RIDE_APPS = [
+  { name: 'Uber',   emoji: '🚗', base: 5.0, rate: 2.5 },
+  { name: 'Bolt',   emoji: '⚡', base: 4.0, rate: 2.2 },
+  { name: 'Yango',  emoji: '🟡', base: 3.5, rate: 1.9 },
+  { name: 'Shaxi',  emoji: '🏎', base: 3.0, rate: 1.7 },
+  { name: 'GoRide', emoji: '🛵', base: 2.5, rate: 1.1 },
+];
+
+function renderRideStrip(distM) {
+  const km = (distM || 0) / 1000;
+  const container = document.getElementById('rideApps');
+  if (!container) return;
+  container.innerHTML = RIDE_APPS.map((a) => {
+    const fare = (a.base + a.rate * km).toFixed(1);
+    return `<div class="ride-card" title="Estimated ${a.name} fare">
+      <div class="ride-emoji">${a.emoji}</div>
+      <div class="ride-fare">₵${fare}</div>
+      <div class="ride-app-name">${a.name}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('rideRow').classList.add('show');
 }
 
 function buildTBT(steps) {

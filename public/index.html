@@ -10,6 +10,8 @@
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Familjen+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.css">
+<link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.Default.css">
 <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
@@ -40,14 +42,14 @@
   </div>
 
   <div class="top-actions">
-    <div class="icon-btn" id="gpsTopBtn" onclick="AM.toggleGPS()" title="My Location">
+    <div class="icon-btn" id="gpsTopBtn" onclick="AM.toggleGPS()" data-tooltip="My Location">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg>
     </div>
-    <div class="icon-btn" id="darkBtn" onclick="AM.toggleDark()" title="Dark mode">🌙</div>
-    <div class="icon-btn" onclick="AM.showShareModal()" title="Share">
+    <div class="icon-btn" id="darkBtn" onclick="AM.toggleDark()" data-tooltip="Dark mode">🌙</div>
+    <div class="icon-btn" onclick="AM.showShareModal()" data-tooltip="Share">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
     </div>
-    <div class="icon-btn" id="authBtn" onclick="AM.showAuthModal()" title="Account">👤</div>
+    <div class="icon-btn" id="authBtn" onclick="AM.showAuthModal()" data-tooltip="Account">👤</div>
   </div>
 </header>
 
@@ -113,6 +115,11 @@
       </div>
       <div class="rr-route" id="rrTrafficNote" style="margin-bottom:0"></div>
       <div class="tbt-steps" id="tbtSteps"></div>
+      <!-- RIDE-HAILING COMPARISON STRIP -->
+      <div class="ride-row" id="rideRow">
+        <div class="ride-lbl">Compare ride-hailing</div>
+        <div class="ride-apps" id="rideApps"></div>
+      </div>
       <div class="rr-btns">
         <button class="rr-btn rr-stop" onclick="AM.stopNav()">⏹ Stop</button>
         <button class="rr-btn rr-voice" id="voiceBtn" onclick="AM.toggleVoice()">🔊 Voice</button>
@@ -149,6 +156,22 @@
   <!-- SAVED PLACES -->
   <div class="p-sec" id="favSec" style="display:none">
     <div class="sec-lbl">⭐ My Places</div>
+    <div class="saved-slots">
+      <div class="saved-slot" id="slotHome" onclick="AM.goSavedSlot('home')">
+        <div class="ss-ico">🏠</div>
+        <div class="ss-body">
+          <div class="ss-lbl">Home</div>
+          <div class="ss-name" id="slotHomeName"><span class="ss-empty">Tap to set</span></div>
+        </div>
+      </div>
+      <div class="saved-slot" id="slotWork" onclick="AM.goSavedSlot('work')">
+        <div class="ss-ico">💼</div>
+        <div class="ss-body">
+          <div class="ss-lbl">Work</div>
+          <div class="ss-name" id="slotWorkName"><span class="ss-empty">Tap to set</span></div>
+        </div>
+      </div>
+    </div>
     <div class="place-list" id="favList"></div>
   </div>
 
@@ -225,8 +248,9 @@
 
 <!-- FLOAT -->
 <div class="float-btns">
-  <div class="fbtn" id="satBtn" onclick="AM.toggleSat()" title="Satellite">🛰️</div>
-  <div class="fbtn on" id="trafficBtn" onclick="AM.toggleReportsLayer()" title="Incidents">🚦</div>
+  <div class="fbtn" id="compassBtn" onclick="AM.centerOnMe()" data-tooltip="Center on me"><span class="cbear">🧭</span></div>
+  <div class="fbtn" id="satBtn" onclick="AM.toggleSat()" data-tooltip="Satellite view">🛰️</div>
+  <div class="fbtn on" id="trafficBtn" onclick="AM.toggleReportsLayer()" data-tooltip="Live incidents">🚦</div>
 </div>
 
 <!-- SPEED HUD -->
@@ -337,8 +361,17 @@
       </div>
     </div>
     <div id="authProfile" style="display:none">
-      <p id="profileInfo"></p>
+      <div class="credits-row">
+        <div class="credits-ico">🪙</div>
+        <div>
+          <div class="credits-bal" id="profileCredits">0</div>
+          <div class="credits-lbl">AccraMaps Credits</div>
+          <div class="credits-hint">Earn by reporting incidents &amp; leaving reviews</div>
+        </div>
+      </div>
+      <p id="profileInfo" style="font-size:11px;color:var(--txt2);margin-bottom:10px;line-height:1.6"></p>
       <div class="modal-body">
+        <button class="btn btn-green btn-sm" onclick="AM.closeModal('authModal')">Back to map</button>
         <button class="btn btn-red btn-sm" onclick="AM.logout()">Sign out</button>
       </div>
     </div>
@@ -349,17 +382,54 @@
 <div class="modal-bg" id="saveModal">
   <div class="modal">
     <div class="modal-hdr"><h3>⭐ Save Place</h3><button class="modal-x" onclick="AM.closeModal('saveModal')">✕</button></div>
+    <p style="font-size:11px;color:var(--txt2);margin-bottom:10px" id="saveModalDesc">Save this place to your account.</p>
+    <div class="save-label-row">
+      <button class="save-lbl-btn" id="slbl-fav" onclick="AM.setSaveLabel('fav')">⭐ Favorite</button>
+      <button class="save-lbl-btn" id="slbl-home" onclick="AM.setSaveLabel('home')">🏠 Home</button>
+      <button class="save-lbl-btn" id="slbl-work" onclick="AM.setSaveLabel('work')">💼 Work</button>
+    </div>
     <div class="modal-body">
-      <input class="auth-input" id="saveName" type="text" placeholder="Name (e.g. Home, Auntie's shop)"/>
+      <div class="save-name-wrap" id="saveNameWrap">
+        <input class="auth-input" id="saveName" type="text" placeholder="Name (e.g. Auntie's shop)"/>
+      </div>
       <input class="auth-input" id="saveGps" type="text" placeholder="GhanaPost GPS (optional, e.g. GA-183-8164)"/>
-      <input class="auth-input" id="saveNote" type="text" placeholder="Note (optional)"/>
+      <input class="auth-input" id="saveNote" type="text" placeholder="Note (optional)" style="display:none" id="saveNote"/>
       <div class="auth-error" id="saveError"></div>
       <button class="btn btn-gold" onclick="AM.submitSavePlace()">Save</button>
     </div>
   </div>
 </div>
 
+<!-- REVIEW MODAL -->
+<div class="modal-bg" id="reviewModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr"><h3>⭐ Reviews</h3><button class="modal-x" onclick="AM.closeModal('reviewModal')">✕</button></div>
+    <div class="rv-place-name" id="rvPlaceName"></div>
+    <div class="rv-avg" id="rvAvg"></div>
+    <div class="review-list" id="rvList"></div>
+    <div id="rvSignIn" class="rv-signin-hint" style="display:none">
+      <a href="#" onclick="AM.showAuthModal();AM.closeModal('reviewModal')">Sign in</a> to leave a review
+    </div>
+    <div id="rvForm" style="display:none">
+      <div class="rv-divider"></div>
+      <div class="rv-form-lbl">Your rating</div>
+      <div class="star-row">
+        <span class="star-pick" data-v="1" onclick="AM.pickStar(1)">★</span>
+        <span class="star-pick" data-v="2" onclick="AM.pickStar(2)">★</span>
+        <span class="star-pick" data-v="3" onclick="AM.pickStar(3)">★</span>
+        <span class="star-pick" data-v="4" onclick="AM.pickStar(4)">★</span>
+        <span class="star-pick" data-v="5" onclick="AM.pickStar(5)">★</span>
+      </div>
+      <input type="hidden" id="rvRating" value="0">
+      <textarea id="rvText" class="auth-input rv-textarea" placeholder="Share your experience (optional)…"></textarea>
+      <div class="auth-error" id="rvError"></div>
+      <button class="btn btn-gold" onclick="AM.submitReview()" style="margin-top:8px">Submit Review</button>
+    </div>
+  </div>
+</div>
+
 <script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/vendor/markercluster/leaflet.markercluster.js"></script>
 <script type="module" src="/js/app.js"></script>
 </body>
 </html>
