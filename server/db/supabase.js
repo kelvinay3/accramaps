@@ -20,9 +20,17 @@ function must(result) {
 }
 
 export function createSupabaseDb(url, serviceRoleKey) {
-  const client = createClient(url, serviceRoleKey, {
+  const options = {
     auth: { persistSession: false, autoRefreshToken: false },
-  });
+  };
+  // supabase-js eagerly wires up its realtime client, which demands a
+  // WebSocket constructor even though this app never opens a realtime
+  // channel. On runtimes without native WebSocket (Node < 22 lambdas),
+  // hand it an inert stub so createClient doesn't throw.
+  if (typeof globalThis.WebSocket === 'undefined') {
+    options.realtime = { transport: class StubWebSocket { close() {} } };
+  }
+  const client = createClient(url, serviceRoleKey, options);
 
   return {
     kind: 'supabase',

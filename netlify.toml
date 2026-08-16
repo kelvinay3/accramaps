@@ -11,7 +11,9 @@
   command = "mkdir -p public/vendor/leaflet && cp -r node_modules/leaflet/dist/. public/vendor/leaflet/"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
+  # Run the function itself on Node 22 (native WebSocket, matches local dev)
+  AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
 
 [functions]
   node_bundler = "esbuild"
