@@ -1,0 +1,12 @@
+{
+  "name": "AccraMaps — Navigate Ghana",
+  "short_name": "AccraMaps",
+  "description": "Ghana-first GPS navigation: directions, trotro routes, live incident reports and places across Accra and Ghana.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F2EE",
+  "theme_color": "#006B3F",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

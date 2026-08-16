@@ -1,0 +1,36 @@
+# AccraMaps on Netlify: static frontend from public/, Express API as a Function.
+#
+# Required environment variables (Site settings → Environment variables):
+#   SUPABASE_URL              your Supabase project URL
+#   SUPABASE_SERVICE_ROLE_KEY service role key (server-side only — never ships to the client)
+#   JWT_SECRET                long random string for auth tokens
+
+[build]
+  publish = "public"
+  # Leaflet ships from node_modules → copy it into the static bundle.
+  command = "mkdir -p public/vendor/leaflet && cp -r node_modules/leaflet/dist/. public/vendor/leaflet/"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  node_bundler = "esbuild"
+  # Only loaded when Supabase env vars are missing (local dev) — kept external
+  # so esbuild doesn't try to bundle the native module.
+  external_node_modules = ["better-sqlite3"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/tiles/*"
+  to = "/.netlify/functions/api/tiles/:splat"
+  status = 200
+
+# App-shell fallback for any other path.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
