@@ -31,8 +31,16 @@ export function boot() {
   if (!bootPromise) {
     bootPromise = (async () => {
       const db = await createDbFromEnv();
-      await db.seedIfEmpty({ PLACES, TROTRO_ROUTES });
-      const app = createApp(db, { secret: resolveSecret() });
+      const status = {};
+      try {
+        await db.seedIfEmpty({ PLACES, TROTRO_ROUTES });
+      } catch (err) {
+        // Don't take the whole API down over a seed failure (e.g. the
+        // Supabase migration hasn't been run yet) — surface it on /api/health.
+        status.seedError = err.message;
+        console.error('Database seed failed:', err.message);
+      }
+      const app = createApp(db, { secret: resolveSecret(), status });
       return { app, db };
     })();
   }

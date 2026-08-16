@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authMiddleware } from './middleware/auth.js';
@@ -12,12 +13,22 @@ import { cityRoutes } from './routes/city.js';
 import { trotroRoutes } from './routes/trotro.js';
 import { tileRoutes } from './routes/tiles.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// import.meta.url is unavailable after serverless bundling (esbuild emits
+// CJS) — fall back to cwd. Static serving is skipped there anyway: Netlify's
+// CDN delivers public/, the function only handles /api and /tiles.
+function resolveDirname() {
+  try {
+    return path.dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return process.cwd();
+  }
+}
 
 export function createApp(db, {
   secret = 'dev-secret-change-me',
   osrmBase = process.env.OSRM_BASE || 'https://router.project-osrm.org',
   nominatimBase = process.env.NOMINATIM_BASE || 'https://nominatim.openstreetmap.org',
+  status = {},
 } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -25,7 +36,14 @@ export function createApp(db, {
   app.use(authMiddleware(secret));
 
   app.get('/api/health', (req, res) => {
-    res.json({ ok: true, service: 'accramaps', time: new Date().toISOString() });
+    res.json({
+      ok: !status.seedError,
+      service: 'accramaps',
+      db: db.kind,
+      seeded: !status.seedError,
+      ...(status.seedError ? { seed_error: status.seedError } : {}),
+      time: new Date().toISOString(),
+    });
   });
 
   app.use('/api/auth', authRoutes(db, secret));
@@ -43,12 +61,17 @@ export function createApp(db, {
     next();
   });
 
-  const publicDir = path.resolve(__dirname, '../public');
-  // Leaflet is served from node_modules so the app has no CDN dependency.
-  app.use('/vendor/leaflet', express.static(path.resolve(__dirname, '../node_modules/leaflet/dist'), { maxAge: '30d', immutable: true }));
-  app.use(express.static(publicDir));
-  // SPA-ish fallback: unknown non-API paths get the app shell.
-  app.get('*', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+  // Static frontend — local/self-hosted only; on Netlify the CDN serves it.
+  const publicDir = path.resolve(resolveDirname(), '../public');
+  if (fs.existsSync(path.join(publicDir, 'index.html'))) {
+    const leafletDist = path.resolve(publicDir, '../node_modules/leaflet/dist');
+    if (fs.existsSync(leafletDist)) {
+      app.use('/vendor/leaflet', express.static(leafletDist, { maxAge: '30d', immutable: true }));
+    }
+    app.use(express.static(publicDir));
+    // SPA-ish fallback: unknown non-API paths get the app shell.
+    app.get('*', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+  }
 
   // Central error handler — never leak stack traces to clients.
   // eslint-disable-next-line no-unused-vars
