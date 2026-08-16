@@ -1,8 +1,10 @@
+import crypto from 'node:crypto';
 import { Router } from 'express';
 import { signToken, hashPassword, verifyPassword } from '../util/token.js';
 import { requireAuth } from '../middleware/auth.js';
 import { rateLimit } from '../util/rateLimit.js';
 import { ah } from '../util/asyncHandler.js';
+import { sendResetEmail } from '../util/email.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -52,6 +54,35 @@ export function authRoutes(db, secret) {
     const user = await db.users.findById(req.user.id);
     if (!user) return res.status(401).json({ error: 'Account no longer exists' });
     res.json({ user });
+  }));
+
+  router.post('/forgot', limiter, ah(async (req, res) => {
+    const { email } = req.body || {};
+    // Always return 200 — never reveal whether an email exists
+    if (!email || !db.resetTokens) return res.json({ ok: true });
+    const user = await db.users.findByEmail(String(email).trim());
+    if (user) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60_000).toISOString();
+      await db.resetTokens.create(user.id, token, expiresAt);
+      const origin = req.get('origin') || req.get('referer')?.replace(/\/$/, '') || 'https://accramaps.com';
+      const resetUrl = `${origin}/?reset_token=${token}`;
+      await sendResetEmail({ to: user.email, name: user.name, resetUrl });
+    }
+    res.json({ ok: true });
+  }));
+
+  router.post('/reset', limiter, ah(async (req, res) => {
+    const { token, password } = req.body || {};
+    if (!token) return res.status(400).json({ error: 'Reset token required' });
+    if (!password || String(password).length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    if (!db.resetTokens) return res.status(503).json({ error: 'Password reset unavailable' });
+    const row = await db.resetTokens.findByToken(String(token));
+    if (!row || row.used) return res.status(400).json({ error: 'Invalid or already-used reset link' });
+    if (new Date(row.expires_at) < new Date()) return res.status(400).json({ error: 'Reset link has expired — request a new one' });
+    await db.users.updatePassword(row.user_id, hashPassword(String(password)));
+    await db.resetTokens.markUsed(row.id);
+    res.json({ ok: true });
   }));
 
   return router;

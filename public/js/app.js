@@ -9,7 +9,7 @@ import { buildCatBars, loadInitialPlaces, loadHotAndQuick, nearbySearch, filterC
 import { initReports, toggleIncBar, toggleReportsLayer, confirmReport } from './reports.js';
 import { startWidgetTimers } from './widgets.js';
 import { loadTrotro, showTrotroDetail, showTrotroModal, navToTrotroStation } from './trotro.js';
-import { initAuth, showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace, setSaveLabel, goSavedSlot } from './auth.js';
+import { initAuth, showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace, setSaveLabel, goSavedSlot, showForgotView, submitForgot, submitReset } from './auth.js';
 import { openReviewModal, pickStar, submitReview } from './reviews.js';
 import { closeModal, openModal, toggleDark, restoreTheme, toggleBS, collapseBS, shareWA, copyLink } from './ui.js';
 
@@ -22,7 +22,7 @@ window.AM = {
   nearbySearch, filterCat,
   toggleIncBar, toggleReportsLayer, confirmReport,
   showTrotroDetail, showTrotroModal, navToTrotroStation,
-  showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace, setSaveLabel, goSavedSlot,
+  showAuthModal, switchAuthTab, submitAuth, logout, savePlace, submitSavePlace, setSaveLabel, goSavedSlot, showForgotView, submitForgot, submitReset,
   openReviewModal, pickStar, submitReview,
   closeModal, showShareModal: () => openModal('shareModal'), shareWA, copyLink,
   centerOnMe() {

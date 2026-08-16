@@ -358,6 +358,26 @@
         <input class="auth-input" id="authPassword" type="password" placeholder="Password (8+ characters)" autocomplete="current-password"/>
         <div class="auth-error" id="authError"></div>
         <button class="btn btn-green" id="authSubmit" onclick="AM.submitAuth()">Sign in</button>
+        <button id="forgotLink" onclick="AM.showForgotView()" style="display:block;margin-top:6px;background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;padding:0;text-decoration:underline">Forgot password?</button>
+      </div>
+    </div>
+    <!-- Forgot password view -->
+    <div id="authForgot" style="display:none">
+      <div class="modal-body">
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:12px;line-height:1.6">Enter your email and we'll send a reset link (expires in 1 hour).</p>
+        <input class="auth-input" id="forgotEmail" type="email" placeholder="Your email address" autocomplete="email"/>
+        <div class="auth-error" id="forgotError"></div>
+        <button class="btn btn-green" onclick="AM.submitForgot()">Send reset link</button>
+        <button onclick="AM.switchAuthTab('login')" style="display:block;margin-top:8px;background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;width:100%;text-align:center">← Back to sign in</button>
+      </div>
+    </div>
+    <!-- Reset password view (shown when ?reset_token= is in URL) -->
+    <div id="authReset" style="display:none">
+      <div class="modal-body">
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:12px;line-height:1.6">Choose a new password for your account.</p>
+        <input class="auth-input" id="resetPassword" type="password" placeholder="New password (8+ characters)" autocomplete="new-password"/>
+        <div class="auth-error" id="resetError"></div>
+        <button class="btn btn-green" onclick="AM.submitReset()">Set new password</button>
       </div>
     </div>
     <div id="authProfile" style="display:none">

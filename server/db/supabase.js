@@ -63,6 +63,22 @@ export function createSupabaseDb(rawUrl, serviceRoleKey) {
         if (error) throw new Error(error.message);
         return count ?? 0;
       },
+      async updatePassword(id, passwordHash) {
+        must(await client.from('users').update({ password_hash: passwordHash }).eq('id', id));
+      },
+    },
+
+    resetTokens: {
+      async create(userId, token, expiresAt) {
+        must(await client.from('password_reset_tokens')
+          .insert({ user_id: userId, token, expires_at: expiresAt }));
+      },
+      async findByToken(token) {
+        return must(await client.from('password_reset_tokens').select('*').eq('token', token).maybeSingle());
+      },
+      async markUsed(id) {
+        must(await client.from('password_reset_tokens').update({ used: true }).eq('id', id));
+      },
     },
 
     places: {

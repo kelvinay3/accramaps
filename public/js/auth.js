@@ -5,8 +5,19 @@ import { openModal, closeModal, showInfo } from './ui.js';
 
 let authTab = 'login';
 let _saveLabel = 'fav';
+let _pendingResetToken = null;
 
 export async function initAuth() {
+  // Check for password reset token in URL first
+  const params = new URLSearchParams(location.search);
+  const resetToken = params.get('reset_token');
+  if (resetToken) {
+    history.replaceState({}, '', location.pathname); // clean URL
+    _pendingResetToken = resetToken;
+    showResetView();
+    return;
+  }
+
   if (!getToken()) return;
   try {
     const data = await api.get('/api/auth/me');
@@ -38,11 +49,69 @@ export function showAuthModal() {
 
 export function switchAuthTab(tab) {
   authTab = tab;
-  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
-  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
-  document.getElementById('authName').style.display = tab === 'register' ? 'block' : 'none';
-  document.getElementById('authSubmit').textContent = tab === 'login' ? 'Sign in' : 'Create account';
+  const showForms = (tab === 'login' || tab === 'register');
+  document.getElementById('authForms').style.display = showForms ? 'block' : 'none';
+  document.getElementById('authForgot').style.display = tab === 'forgot' ? 'block' : 'none';
+  document.getElementById('authReset').style.display = tab === 'reset' ? 'block' : 'none';
+  document.getElementById('authProfile').style.display = 'none';
+  if (showForms) {
+    document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+    document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+    document.getElementById('authName').style.display = tab === 'register' ? 'block' : 'none';
+    document.getElementById('authSubmit').textContent = tab === 'login' ? 'Sign in' : 'Create account';
+    document.getElementById('forgotLink').style.display = tab === 'login' ? 'block' : 'none';
+  }
   setAuthError('');
+}
+
+export function showForgotView() {
+  switchAuthTab('forgot');
+  document.getElementById('authTitle').textContent = '🔑 Reset Password';
+  document.getElementById('forgotEmail').value = document.getElementById('authEmail').value;
+  document.getElementById('forgotError').classList.remove('show');
+}
+
+function showResetView() {
+  openModal('authModal');
+  switchAuthTab('reset');
+  document.getElementById('authTitle').textContent = '🔑 Set New Password';
+}
+
+export async function submitForgot() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const errEl = document.getElementById('forgotError');
+  errEl.classList.remove('show');
+  if (!email) { errEl.textContent = 'Enter your email address'; errEl.classList.add('show'); return; }
+  try {
+    await api.post('/api/auth/forgot', { email });
+    closeModal('authModal');
+    showInfo('📧 Check your email', 'A password reset link has been sent (check your spam folder too)', 'ok');
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+  }
+}
+
+export async function submitReset() {
+  const password = document.getElementById('resetPassword').value;
+  const errEl = document.getElementById('resetError');
+  errEl.classList.remove('show');
+  if (!password || password.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters';
+    errEl.classList.add('show');
+    return;
+  }
+  try {
+    await api.post('/api/auth/reset', { token: _pendingResetToken, password });
+    _pendingResetToken = null;
+    closeModal('authModal');
+    showInfo('✅ Password updated!', 'Sign in with your new password', 'ok');
+    // Switch to login for them
+    setTimeout(() => showAuthModal(), 600);
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+  }
 }
 
 function setAuthError(msg) {

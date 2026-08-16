@@ -337,8 +337,8 @@ html,body{height:100%;overflow:hidden;font-family:'Space Grotesk',sans-serif;bac
 
 /* TOOLTIPS — desktop hover labels on icon buttons */
 [data-tooltip]{position:relative}
-[data-tooltip]::before{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:rgba(15,13,10,.92);color:#fff;font-size:10px;font-weight:600;padding:5px 9px;border-radius:7px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;font-family:'Space Grotesk',sans-serif;letter-spacing:.2px;box-shadow:0 3px 10px rgba(0,0,0,.35)}
-[data-tooltip]::after{content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);border:4px solid transparent;border-top-color:rgba(15,13,10,.92);pointer-events:none;opacity:0;transition:opacity .15s}
+[data-tooltip]::before{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);background:rgba(15,13,10,.92);color:#fff;font-size:10px;font-weight:600;padding:5px 9px;border-radius:7px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;font-family:'Space Grotesk',sans-serif;letter-spacing:.2px;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+[data-tooltip]::after{content:'';position:absolute;top:calc(100% + 2px);left:50%;transform:translateX(-50%);border:4px solid transparent;border-bottom-color:rgba(15,13,10,.92);pointer-events:none;opacity:0;transition:opacity .15s}
 [data-tooltip]:hover::before,[data-tooltip]:hover::after{opacity:1}
 
 /* RIDE-HAILING COMPARISON STRIP */

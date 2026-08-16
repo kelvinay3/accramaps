@@ -133,6 +133,15 @@ CREATE TABLE IF NOT EXISTS saved_places (
   UNIQUE (user_id, label)
 );
 CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_places(user_id);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token      TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  used       INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
 
 const nowIso = () => new Date().toISOString();
@@ -164,6 +173,9 @@ export async function createSqliteDb(dbPath) {
       },
       async count() {
         return raw.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+      },
+      async updatePassword(id, passwordHash) {
+        raw.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
       },
     },
 
@@ -346,6 +358,18 @@ export async function createSqliteDb(dbPath) {
       },
       async remove(id, userId) {
         return raw.prepare('DELETE FROM saved_places WHERE id = ? AND user_id = ?').run(id, userId).changes > 0;
+      },
+    },
+
+    resetTokens: {
+      async create(userId, token, expiresAt) {
+        raw.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(userId, token, expiresAt);
+      },
+      async findByToken(token) {
+        return raw.prepare('SELECT * FROM password_reset_tokens WHERE token = ?').get(token) ?? null;
+      },
+      async markUsed(id) {
+        raw.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?').run(id);
       },
     },
 
