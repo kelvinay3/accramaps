@@ -19,7 +19,16 @@ function must(result) {
   return result.data;
 }
 
-export function createSupabaseDb(url, serviceRoleKey) {
+// Accept the URL however it was pasted from the dashboard — with a trailing
+// slash or a service path like /rest/v1 — and reduce it to the project root.
+function normalizeSupabaseUrl(url) {
+  return String(url).trim()
+    .replace(/\/+$/, '')
+    .replace(/\/(rest|auth|realtime|storage|functions)\/v1$/, '');
+}
+
+export function createSupabaseDb(rawUrl, serviceRoleKey) {
+  const url = normalizeSupabaseUrl(rawUrl);
   const options = {
     auth: { persistSession: false, autoRefreshToken: false },
   };
